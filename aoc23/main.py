@@ -1,8 +1,9 @@
 import datetime
+import inspect
 import os
+import re
 import time
 import requests as r
-import inspect
 from dotenv import dotenv_values
 
 ENV_VARS = dotenv_values('.env')
@@ -39,6 +40,30 @@ def scrape(year: int = 0, day: int = 0, separator: str = '\n'):
 
 
 def aoc1():
+    inp = scrape()
+    sum_part1, sum_part2 = 0, 0
+    for line in inp:
+        # remove all non digits
+        line = re.sub(r'\D', '', line)
+        # get first and last number
+        if len(line) == 0:
+            continue
+        sum_part1 += int(line[0]) * 10 + int(line[-1])
+    print(sum_part1)
+
+    map_replace = {'zero': 'z0o', 'one': 'o1e', 'two': 't2o', 'three': 't3e', 'four': 'f4r', 'five': 'f5e',
+                   'six': 's6x', 'seven': 's7n', 'eight': 'e8t', 'nine': 'n9e'}
+    for line in inp:
+        for key, val in map_replace.items():
+            line = line.replace(key, val)
+        # remove all non digits
+        line = re.sub(r'\D', '', line)
+        # get first and last number
+        sum_part2 += int(line[0]) * 10 + int(line[-1])
+    print(sum_part2)
+
+
+def aoc2():
     pass
 
 
