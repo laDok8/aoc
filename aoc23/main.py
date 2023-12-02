@@ -3,6 +3,8 @@ import inspect
 import os
 import re
 import time
+from functools import reduce
+
 import requests as r
 from dotenv import dotenv_values
 
@@ -64,7 +66,28 @@ def aoc1():
 
 
 def aoc2():
-    pass
+    def separate_game(_game):
+        game_split = _game.split(':')
+        _id = int(game_split[0][4:])
+        sets = game_split[1].split(';')
+        maxes = {'red': 0, 'green': 0, 'blue': 0}
+
+        for take in sets:
+            for color in maxes.keys():
+                takes_in_color = [s for s in take.split(',') if color in s]
+                takes_in_color = [int(s[:-len(color)]) for s in takes_in_color]
+                maxes[color] = sum(takes_in_color) if sum(takes_in_color) > maxes[color] else maxes[color]
+        return _id, maxes
+
+    possible_ids_sum, fewest_cubes_sum, inp = 0, 0, scrape()
+    part1_limits = {'red': 12, 'green': 13, 'blue': 14}
+    for game in inp:
+        game_id, cur_lims = separate_game(game)
+        if all([cur_lims[color] <= part1_limits[color] for color in cur_lims.keys()]):
+            possible_ids_sum += game_id
+        fewest_cubes_sum += reduce((lambda x, y: x * y), cur_lims.values())
+
+    print("part 1: ", possible_ids_sum, "\npart 2: ", fewest_cubes_sum)
 
 
 if __name__ == '__main__':
