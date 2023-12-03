@@ -105,29 +105,19 @@ class Rectangle:
 
 
 def aoc3():
-    inp = scrape()
-    all_parts, all_nums = [], []
+    all_parts, all_nums, inp = [], [], scrape()
     for (_y, line) in enumerate(inp):
-        nums, parts = re.findall(r'\d+', line), re.findall(r'[^.\d]+', line)
-        for item in nums + parts:
-            x = line.index(item)
-            # replace it with dots so we can find the next one
-            line = line[:x] + '.' * len(item) + line[x + len(item):]
-
-            if item in nums:
-                val = int(item)
-                all_nums.append((Rectangle(x, _y, len(item)), val))
-            else:
-                # parts are always 1 wide
-                all_parts.append(Rectangle(x, _y, 1))
+        num_iter, part_iter = re.finditer(r'\d+', line), re.finditer(r'[^.\d]', line)
+        for num in num_iter:
+            all_nums.append((Rectangle(num.span()[0], _y, num.span()[1] - num.span()[0]), int(num.group())))
+        for part in part_iter:
+            all_parts.append(Rectangle(part.span()[0], _y, 1))
 
     sum_part1 = sum(
-        map(lambda _x: _x[1], filter(lambda num: any(num[0].is_adjacent(_part) for _part in all_parts), all_nums)))
-
+        map(lambda _x: _x[1], filter(lambda _num: any(_num[0].is_adjacent(_part) for _part in all_parts), all_nums)))
     sum_part2 = sum(
-        reduce(lambda _x, y: _x * y, map(lambda x: x[1], filter(lambda num: part.is_adjacent(num[0]), all_nums)), 1) for
-        part in all_parts if len(list(filter(lambda num: part.is_adjacent(num[0]), all_nums))) == 2)
-
+        reduce(lambda _x, y: _x * y, map(lambda x: x[1], filter(lambda _num: part.is_adjacent(_num[0]), all_nums)), 1)
+        for part in all_parts if len(list(filter(lambda _num: part.is_adjacent(_num[0]), all_nums))) == 2)
     print("part 1: ", sum_part1, "\npart 2: ", sum_part2)
 
 
