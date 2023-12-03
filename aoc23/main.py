@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import datetime
 import inspect
 import os
@@ -19,8 +21,8 @@ def print_timing(func):
         start = time.perf_counter()
         result = func(*arg)
         end = time.perf_counter()
-        fs = '{} took {:.2f} microseconds'
-        print(fs.format(func.__name__, (end - start) * 1e6))
+        fs = '{} took {:.2f} ms'
+        print(fs.format(func.__name__, (end - start) * 1e3))
         return result
 
     return wrapper
@@ -90,8 +92,51 @@ def aoc2():
     print("part 1: ", possible_ids_sum, "\npart 2: ", fewest_cubes_sum)
 
 
+class Rectangle:
+    x, y, width = 0, 0, 0
+
+    def __init__(self, x, y, width):
+        self.x, self.y, self.width = x, y, width
+
+    # works num->part not part->num
+    def is_adjacent(self, other):
+        return (abs(self.y - other.y) <= 1 and (
+                self.x - 1 <= other.x <= self.x + self.width or other.x - 1 <= self.x <= other.x + other.width))
+
+
+def aoc3():
+    inp = scrape()
+    all_parts, all_nums = [], []
+    for (_y, line) in enumerate(inp):
+        nums, parts = re.findall(r'\d+', line), re.findall(r'[^.\d]+', line)
+        for item in nums + parts:
+            x = line.index(item)
+            # replace it with dots so we can find the next one
+            line = line[:x] + '.' * len(item) + line[x + len(item):]
+
+            if item in nums:
+                val = int(item)
+                all_nums.append((Rectangle(x, _y, len(item)), val))
+            else:
+                # parts are always 1 wide
+                all_parts.append(Rectangle(x, _y, 1))
+
+    sum_part1 = sum(
+        map(lambda _x: _x[1], filter(lambda num: any(num[0].is_adjacent(_part) for _part in all_parts), all_nums)))
+
+    sum_part2 = sum(
+        reduce(lambda _x, y: _x * y, map(lambda x: x[1], filter(lambda num: part.is_adjacent(num[0]), all_nums)), 1) for
+        part in all_parts if len(list(filter(lambda num: part.is_adjacent(num[0]), all_nums))) == 2)
+
+    print("part 1: ", sum_part1, "\npart 2: ", sum_part2)
+
+
+def aoc4():
+    pass
+
+
 if __name__ == '__main__':
-    # start aoc for give calendar day
+    # start aoc for given calendar day
     today = datetime.date.today().day
     today_f_name = "aoc" + str(today)
     eval(today_f_name)()
