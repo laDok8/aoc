@@ -98,7 +98,6 @@ class Rectangle:
     def __init__(self, x, y, width):
         self.x, self.y, self.width = x, y, width
 
-    # works num->part not part->num
     def is_adjacent(self, other):
         return (abs(self.y - other.y) <= 1 and (
                 self.x - 1 <= other.x <= self.x + self.width or other.x - 1 <= self.x <= other.x + other.width))
@@ -121,8 +120,38 @@ def aoc3():
     print("part 1: ", sum_part1, "\npart 2: ", sum_part2)
 
 
+@print_timing
 def aoc4():
-    pass
+    card_points_part1 = []
+    for nums in scrape():
+        winning, mine = nums.split(':')[1].split('|')
+        winning = [int(i) for i in winning.split()]
+        mine = [int(i) for i in mine.split()]
+        conjunction = [i for i in mine if i in winning]
+        if len(conjunction) > 0:
+            card_points_part1.append(2 ** (len(conjunction) - 1))
+    print("part 1 :", sum(card_points_part1))
+    card_str = "Card "
+    card_storage = {}
+    limit = len(scrape())
+    card_storage[card_str + "1"] = 1
+    for card_num, nums in enumerate(scrape()):
+        card_num += 1
+        if not card_storage.get(card_str + str(card_num)):
+            card_storage[card_str + str(card_num)] = 1
+        count_current = card_storage.get(card_str + str(card_num))
+        winning, mine = nums.split(':')[1].split('|')
+        winning = [int(i) for i in winning.split()]
+        mine = [int(i) for i in mine.split()]
+        conjunction = [i for i in mine if i in winning]
+        for i in range(card_num + 1, len(conjunction) + card_num + 1):
+            if i > limit:
+                continue
+            # add new instances
+            next_card_num = card_storage.get(card_str + str(i), 1)
+            card_storage[card_str + str(i)] = next_card_num + count_current
+
+    print("part 2 :", sum([i for i in card_storage.values()]))
 
 
 if __name__ == '__main__':
