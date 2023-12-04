@@ -120,38 +120,23 @@ def aoc3():
     print("part 1: ", sum_part1, "\npart 2: ", sum_part2)
 
 
-@print_timing
 def aoc4():
-    card_points_part1 = []
-    for nums in scrape():
-        winning, mine = nums.split(':')[1].split('|')
-        winning = [int(i) for i in winning.split()]
-        mine = [int(i) for i in mine.split()]
-        conjunction = [i for i in mine if i in winning]
-        if len(conjunction) > 0:
-            card_points_part1.append(2 ** (len(conjunction) - 1))
-    print("part 1 :", sum(card_points_part1))
-    card_str = "Card "
-    card_storage = {}
-    limit = len(scrape())
-    card_storage[card_str + "1"] = 1
-    for card_num, nums in enumerate(scrape()):
-        card_num += 1
-        if not card_storage.get(card_str + str(card_num)):
-            card_storage[card_str + str(card_num)] = 1
-        count_current = card_storage.get(card_str + str(card_num))
-        winning, mine = nums.split(':')[1].split('|')
-        winning = [int(i) for i in winning.split()]
-        mine = [int(i) for i in mine.split()]
-        conjunction = [i for i in mine if i in winning]
-        for i in range(card_num + 1, len(conjunction) + card_num + 1):
-            if i > limit:
-                continue
-            # add new instances
-            next_card_num = card_storage.get(card_str + str(i), 1)
-            card_storage[card_str + str(i)] = next_card_num + count_current
+    sum_points_part1, card_str, card_storage = 0, "Card ", {}
+    for card_num, nums in enumerate(scrape(), start=1):
+        winning, mine = [list(map(int, part.split())) for part in nums.split(':')[1].split('|')]
+        conjunction = set(winning) & set(mine)
+        sum_points_part1 += 2 ** (len(conjunction) - 1) if len(conjunction) > 0 else 0
 
-    print("part 2 :", sum([i for i in card_storage.values()]))
+        # part 2
+        count_current = card_storage.setdefault(card_str + str(card_num), 1)
+        # add new instances
+        for i in range(card_num + 1, len(conjunction) + card_num + 1):
+            card_storage[card_str + str(i)] = card_storage.get(card_str + str(i), 1) + count_current
+    print("part 1 :", sum_points_part1, "\npart 2 :", sum([i for i in card_storage.values()]))
+
+
+def aoc5():
+    pass
 
 
 if __name__ == '__main__':
