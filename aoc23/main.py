@@ -135,7 +135,63 @@ def aoc4():
     print("part 1 :", sum_points_part1, "\npart 2 :", sum([i for i in card_storage.values()]))
 
 
+def get_min_location_from_ranges(seed_ranges, all_steps):
+    # x-> Y maps
+    for single_mapping_step in all_steps:
+        print(seed_ranges)
+        seed_rng_next = []
+        for (seed_rng_start, seed_rng_end) in seed_ranges:
+            # all tuples from mapping step
+            for dest, src, ln in single_mapping_step:
+                src_end = src + ln - 1
+                mapping = lambda x, _dest=dest, _src=src: x + _dest - _src
+                # if overlap between seed_rng and src exists map these to destination => split ranges
+                # mapping starts before seeds
+                if src <= seed_rng_start <= src_end:
+                    seed_rng_next.append((mapping(seed_rng_start), mapping(min(seed_rng_end, src_end))))
+                    # not whole interval
+                    if seed_rng_end > src_end:
+                        seed_rng_next.append((src_end + 1, seed_rng_end))
+                    break
+                elif seed_rng_start <= src <= seed_rng_end:
+                    seed_rng_next.append((seed_rng_start, src - 1))
+                    seed_rng_next.append((mapping(src), mapping(min(seed_rng_end, src_end))))
+                    # not whole interval
+                    if seed_rng_end > src_end:
+                        seed_rng_next.append((src_end + 1, seed_rng_end))
+                    break
+            else:
+                seed_rng_next.append((seed_rng_start, seed_rng_end))
+
+        seed_ranges = seed_rng_next
+    return min([rng_start for rng_start, _ in seed_ranges])
+
+
+@print_timing
 def aoc5():
+    inp, step_maps = scrape(separator='\n\n'), []
+    # parse input -> each inner list is X->Y map (stored as separate ranges)
+    for maps in inp[1:]:
+        nums = [int(i) for i in maps.split()[2:]]
+        cur_step_map = []
+        for dest, src, ln in zip(*(iter(nums),) * 3):
+            cur_step_map.append((dest, src, ln))
+        step_maps.append(cur_step_map)
+
+    seeds = [int(i) for i in inp[0][6:].split()]
+    seed_ranges_part1, seed_ranges_part2 = [], []
+    # create ranges
+    for start in seeds:
+        seed_ranges_part1.append((start, start))
+    for start, rng in zip(*(iter(seeds),) * 2):
+        seed_ranges_part2.append((start, start + rng - 1))
+
+    # part 2 no workey
+    print("part 1 :", get_min_location_from_ranges(seed_ranges_part1, step_maps))
+    print("part 2 :", get_min_location_from_ranges(seed_ranges_part2, step_maps))
+
+
+def aoc6():
     pass
 
 
