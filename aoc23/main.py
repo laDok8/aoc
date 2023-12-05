@@ -2,6 +2,7 @@
 
 import datetime
 import inspect
+import multiprocessing
 import os
 import re
 import time
@@ -135,36 +136,17 @@ def aoc4():
     print("part 1 :", sum_points_part1, "\npart 2 :", sum([i for i in card_storage.values()]))
 
 
-def get_min_location_from_ranges(seed_ranges, all_steps):
-    # x-> Y maps
-    for single_mapping_step in all_steps:
-        print(seed_ranges)
-        seed_rng_next = []
-        for (seed_rng_start, seed_rng_end) in seed_ranges:
-            # all tuples from mapping step
-            for dest, src, ln in single_mapping_step:
-                src_end = src + ln - 1
-                mapping = lambda x, _dest=dest, _src=src: x + _dest - _src
-                # if overlap between seed_rng and src exists map these to destination => split ranges
-                # mapping starts before seeds
-                if src <= seed_rng_start <= src_end:
-                    seed_rng_next.append((mapping(seed_rng_start), mapping(min(seed_rng_end, src_end))))
-                    # not whole interval
-                    if seed_rng_end > src_end:
-                        seed_rng_next.append((src_end + 1, seed_rng_end))
+def get_min_location_from_ranges(start2, end2, step_maps, cur_min, inp):
+    my_min = 999999999999
+    for s in range(start2, end2+1):
+        for maps in step_maps:
+            for dest, src, ln in maps:
+                if src <= s <= src + ln:
+                    s += dest - src
                     break
-                elif seed_rng_start <= src <= seed_rng_end:
-                    seed_rng_next.append((seed_rng_start, src - 1))
-                    seed_rng_next.append((mapping(src), mapping(min(seed_rng_end, src_end))))
-                    # not whole interval
-                    if seed_rng_end > src_end:
-                        seed_rng_next.append((src_end + 1, seed_rng_end))
-                    break
-            else:
-                seed_rng_next.append((seed_rng_start, seed_rng_end))
-
-        seed_ranges = seed_rng_next
-    return min([rng_start for rng_start, _ in seed_ranges])
+        my_min = min(my_min, s)
+    cur_min.value = min(cur_min.value, my_min)
+    print("min:", my_min)
 
 
 @print_timing
@@ -187,8 +169,30 @@ def aoc5():
         seed_ranges_part2.append((start, start + rng - 1))
 
     # part 2 no workey
-    print("part 1 :", get_min_location_from_ranges(seed_ranges_part1, step_maps))
-    print("part 2 :", get_min_location_from_ranges(seed_ranges_part2, step_maps))
+    #print("part 1 :", get_min_location_from_ranges(seed_ranges_part1, step_maps))
+    #print("part 2 :", get_min_location_from_ranges(seed_ranges_part2, step_maps))
+
+    cur_min = multiprocessing.Value('l', 999999999999)  # 'i' represents a signed int
+    num_processes = 5  # Adjust the number of threads as needed
+    process_list = []
+
+    for start, interval in zip(*(iter(seeds),) * 2):
+        # split each range into num_processes subranges
+        for i in range(num_processes):
+            start2, end2 = start + i * interval // num_processes, start + (i + 1) * interval // num_processes - 1
+            process = multiprocessing.Process(
+                target=get_min_location_from_ranges,
+                args=(start2, end2, step_maps, cur_min, inp)
+            )
+            process_list.append(process)
+            process.start()
+
+    for process in process_list:
+        process.join()
+
+    print("part 2:", cur_min.value)
+#part 2: 37806487
+#aoc5 took 2797553.95 ms
 
 
 def aoc6():
