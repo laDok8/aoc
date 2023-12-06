@@ -178,6 +178,23 @@ def aoc5():
 
 
 def aoc6():
+    inp, acc_prod = scrape(), 1
+    race_time, record_dist = [int(i) for i in inp[0][5:].split()], [int(i) for i in inp[1][9:].split()]
+    for cur_time, cur_record in zip(race_time, record_dist):
+        acc = 0
+        for hold_time in range(1, cur_time):
+            run_time = cur_time - hold_time
+            acc += 1 if (run_time * hold_time) > cur_record else 0
+        acc_prod *= acc
+
+    acc, merged_time, merged_dist = 0, int(inp[0][5:].replace(' ', '')), int(inp[1][9:].replace(' ', ''))
+    for hold_time in range(1, merged_time):
+        run_time = merged_time - hold_time
+        acc += 1 if (run_time * hold_time) > merged_dist else 0
+    print("part 1 :", acc_prod, "\npart 2 :", acc)
+
+
+def aoc7():
     pass
 
 
