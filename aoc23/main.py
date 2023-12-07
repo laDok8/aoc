@@ -196,44 +196,36 @@ def aoc6():
 
 
 def get_poker_hand_type(occurrences: dict):
-    # five of a kind
     if max(occurrences.values()) == 5:
-        return '9'
-    # four of a kind
+        return '9'  # five of a kind
     elif max(occurrences.values()) == 4:
-        return '8'
-    # full house
+        return '8'  # four of a kind
     elif sorted(occurrences.values()) == [2, 3]:
-        return '7'
-    # three of a kind
+        return '7'  # full house
     elif sorted(occurrences.values()) == [1, 1, 3]:
-        return '6'
-    # two pairs
+        return '6'  # three of a kind
     elif sorted(occurrences.values()) == [1, 2, 2]:
-        return '5'
-    # one pair
+        return '5'  # two pairs
     elif sorted(occurrences.values()) == [1, 1, 1, 2]:
-        return '4'
-    # high card
+        return '4'  # one pair
     else:
-        return '3'
+        return '3'  # high card
 
 
 def aoc7():
     inp = scrape()
     Hand = namedtuple('Hand', ['raw', 'bid', 'strength'])  # strength = TYPE + raw
-    # for easier sting comparison
+    # for easier string sort
     raw_strength_map_p1 = {'T': 'a', 'J': 'b', 'Q': 'c', 'K': 'd', 'A': 'e'}
     raw_strength_map_p2 = raw_strength_map_p1.copy()
     raw_strength_map_p2['J'] = '0'
 
     all_hands_p1, all_hands_p2 = [], []
     for line in inp:
-        raw, bid = line.split(' ')
-        # count occurrences of each card
+        raw, bid = line.split()
+
         occurrences = {card: raw.count(card) for card in raw}
         hand_type = get_poker_hand_type(occurrences)
-
         all_hands_p1.append(Hand(raw, bid, hand_type + ''.join([raw_strength_map_p1.get(c, c) for c in raw])))
 
         # remove jokes and add to most common for part2
@@ -246,7 +238,6 @@ def aoc7():
         hand_type = get_poker_hand_type(occurrences)
         all_hands_p2.append(Hand(raw, bid, hand_type + ''.join([raw_strength_map_p2.get(c, c) for c in raw])))
 
-    # sort by strength string
     all_hands_p1.sort(key=lambda x: x.strength)
     all_hands_p2.sort(key=lambda x: x.strength)
 
