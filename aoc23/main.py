@@ -5,6 +5,7 @@ import inspect
 import os
 import re
 import time
+from collections import namedtuple
 from functools import reduce
 
 import requests as r
@@ -194,7 +195,70 @@ def aoc6():
     print("part 1 :", acc_prod, "\npart 2 :", acc)
 
 
+def get_poker_hand_type(occurrences: dict):
+    # five of a kind
+    if max(occurrences.values()) == 5:
+        return '9'
+    # four of a kind
+    elif max(occurrences.values()) == 4:
+        return '8'
+    # full house
+    elif sorted(occurrences.values()) == [2, 3]:
+        return '7'
+    # three of a kind
+    elif sorted(occurrences.values()) == [1, 1, 3]:
+        return '6'
+    # two pairs
+    elif sorted(occurrences.values()) == [1, 2, 2]:
+        return '5'
+    # one pair
+    elif sorted(occurrences.values()) == [1, 1, 1, 2]:
+        return '4'
+    # high card
+    else:
+        return '3'
+
+
 def aoc7():
+    inp = scrape()
+    Hand = namedtuple('Hand', ['raw', 'bid', 'strength'])  # strength = TYPE + raw
+    # for easier sting comparison
+    raw_strength_map_p1 = {'T': 'a', 'J': 'b', 'Q': 'c', 'K': 'd', 'A': 'e'}
+    raw_strength_map_p2 = raw_strength_map_p1.copy()
+    raw_strength_map_p2['J'] = '0'
+
+    all_hands_p1, all_hands_p2 = [], []
+    for line in inp:
+        raw, bid = line.split(' ')
+        # count occurrences of each card
+        occurrences = {card: raw.count(card) for card in raw}
+        hand_type = get_poker_hand_type(occurrences)
+
+        all_hands_p1.append(Hand(raw, bid, hand_type + ''.join([raw_strength_map_p1.get(c, c) for c in raw])))
+
+        # remove jokes and add to most common for part2
+        if occurrences.get('J', 0) != 5:
+            count = occurrences.get('J', 0)
+            occurrences.pop('J', None)
+            most_common = max(occurrences, key=occurrences.get)
+            occurrences[most_common] += count
+
+        hand_type = get_poker_hand_type(occurrences)
+        all_hands_p2.append(Hand(raw, bid, hand_type + ''.join([raw_strength_map_p2.get(c, c) for c in raw])))
+
+    # sort by strength string
+    all_hands_p1.sort(key=lambda x: x.strength)
+    all_hands_p2.sort(key=lambda x: x.strength)
+
+    acc_p1, acc_p2 = 0, 0
+    for rank, h in enumerate(all_hands_p1, 1):
+        acc_p1 += int(h.bid) * rank
+    for rank, h in enumerate(all_hands_p2, 1):
+        acc_p2 += int(h.bid) * rank
+    print("part1 :", acc_p1, "part2 :", acc_p2)
+
+
+def aoc8():
     pass
 
 
