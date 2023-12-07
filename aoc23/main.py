@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 import datetime
 import inspect
 import os
@@ -37,9 +36,9 @@ def scrape(year: int = 0, day: int = 0, separator: str = '\n'):
     url = f'https://adventofcode.com/{year}/day/{day}/input'
     file = f'inp{day}.txt'
     if os.path.exists(file):
-        return open(file).read().split(separator)
-    inp = r.get(url, cookies=cookies).text.rstrip()
-    with open(file, 'w') as f:
+        return open(file, encoding='utf-8').read().split(separator)
+    inp = r.get(url, cookies=cookies, timeout=1).text.rstrip()
+    with open(file, 'w', encoding='UTF-8') as f:
         f.write(inp)
     return inp.split(separator)
 
@@ -54,7 +53,6 @@ def aoc1():
         if len(line) == 0:
             continue
         sum_part1 += int(line[0]) * 10 + int(line[-1])
-    print(sum_part1)
 
     map_replace = {'zero': 'z0o', 'one': 'o1e', 'two': 't2o', 'three': 't3e', 'four': 'f4r', 'five': 'f5e',
                    'six': 's6x', 'seven': 's7n', 'eight': 'e8t', 'nine': 'n9e'}
@@ -65,7 +63,7 @@ def aoc1():
         line = re.sub(r'\D', '', line)
         # get first and last number
         sum_part2 += int(line[0]) * 10 + int(line[-1])
-    print(sum_part2)
+    print('part 1:', sum_part1, '\npart 2:', sum_part2)
 
 
 def aoc2():
@@ -86,11 +84,11 @@ def aoc2():
     part1_limits = {'red': 12, 'green': 13, 'blue': 14}
     for game in inp:
         game_id, cur_lims = separate_game(game)
-        if all([cur_lims[color] <= part1_limits[color] for color in cur_lims.keys()]):
+        if all(cur_lims[color] <= part1_limits[color] for color in cur_lims.keys()):
             possible_ids_sum += game_id
         fewest_cubes_sum += reduce((lambda x, y: x * y), cur_lims.values())
 
-    print("part 1: ", possible_ids_sum, "\npart 2: ", fewest_cubes_sum)
+    print("part 1:", possible_ids_sum, "\npart 2:", fewest_cubes_sum)
 
 
 class Rectangle:
@@ -103,22 +101,26 @@ class Rectangle:
         return (abs(self.y - other.y) <= 1 and (
                 self.x - 1 <= other.x <= self.x + self.width or other.x - 1 <= self.x <= other.x + other.width))
 
+    def __str__(self):
+        return f'x:{self.x}, y:{self.y}, width:{self.width}'
+
 
 def aoc3():
     all_parts, all_nums, inp = [], [], scrape()
     for (_y, line) in enumerate(inp):
         num_iter, part_iter = re.finditer(r'\d+', line), re.finditer(r'[^.\d]', line)
         for num in num_iter:
-            all_nums.append((Rectangle(num.span()[0], _y, num.span()[1] - num.span()[0]), int(num.group())))
+            all_nums.append((Rectangle(x=num.span()[0], y=_y, width=num.span()[1] - num.span()[0]), int(num.group())))
         for part in part_iter:
             all_parts.append(Rectangle(part.span()[0], _y, 1))
 
     sum_part1 = sum(
         map(lambda _x: _x[1], filter(lambda _num: any(_num[0].is_adjacent(_part) for _part in all_parts), all_nums)))
-    sum_part2 = sum(
-        reduce(lambda _x, y: _x * y, map(lambda x: x[1], filter(lambda _num: part.is_adjacent(_num[0]), all_nums)), 1)
-        for part in all_parts if len(list(filter(lambda _num: part.is_adjacent(_num[0]), all_nums))) == 2)
-    print("part 1: ", sum_part1, "\npart 2: ", sum_part2)
+    sum_part2 = sum(reduce(lambda _x, y, p=part: _x * y,
+                           map(lambda x, p=part: x[1], filter(lambda _num, p=part: p.is_adjacent(_num[0]), all_nums)),
+                           1) for part in all_parts if
+                    len(list(filter(lambda _num, p=part: p.is_adjacent(_num[0]), all_nums))) == 2)
+    print("part 1:", sum_part1, "\npart 2:", sum_part2)
 
 
 def aoc4():
@@ -133,7 +135,7 @@ def aoc4():
         # add new instances
         for i in range(card_num + 1, len(conjunction) + card_num + 1):
             card_storage[card_str + str(i)] = card_storage.get(card_str + str(i), 1) + count_current
-    print("part 1 :", sum_points_part1, "\npart 2 :", sum([i for i in card_storage.values()]))
+    print("part 1:", sum_points_part1, "\npart 2:", sum(i for i in card_storage.values()))
 
 
 def get_min_location_from_ranges(cur_range, all_steps):
@@ -174,8 +176,8 @@ def aoc5():
         seed_ranges_part1.append((start, start + 1))
     seed_ranges_part2 = [(start, start + rng) for start, rng in zip(seeds[::2], seeds[1::2])]
 
-    print("part 1 :", get_min_location_from_ranges(seed_ranges_part1, step_maps))
-    print("part 2 :", get_min_location_from_ranges(seed_ranges_part2, step_maps))
+    print("part 1:", get_min_location_from_ranges(seed_ranges_part1, step_maps))
+    print("part 2:", get_min_location_from_ranges(seed_ranges_part2, step_maps))
 
 
 def aoc6():
@@ -192,28 +194,24 @@ def aoc6():
     for hold_time in range(1, merged_time):
         run_time = merged_time - hold_time
         acc += 1 if (run_time * hold_time) > merged_dist else 0
-    print("part 1 :", acc_prod, "\npart 2 :", acc)
+    print("part 1:", acc_prod, "\npart 2:", acc)
 
 
 def get_poker_hand_type(occurrences: dict):
-    if max(occurrences.values()) == 5:
-        return '9'  # five of a kind
-    elif max(occurrences.values()) == 4:
-        return '8'  # four of a kind
-    elif sorted(occurrences.values()) == [2, 3]:
+    if m := max(occurrences.values()) >= 4:
+        return str(14 - m)  # five/four of a kind
+    if sorted(occurrences.values()) == [2, 3]:
         return '7'  # full house
-    elif sorted(occurrences.values()) == [1, 1, 3]:
+    if sorted(occurrences.values()) == [1, 1, 3]:
         return '6'  # three of a kind
-    elif sorted(occurrences.values()) == [1, 2, 2]:
+    if sorted(occurrences.values()) == [1, 2, 2]:
         return '5'  # two pairs
-    elif sorted(occurrences.values()) == [1, 1, 1, 2]:
+    if sorted(occurrences.values()) == [1, 1, 1, 2]:
         return '4'  # one pair
-    else:
-        return '3'  # high card
+    return '3'  # high card
 
 
 def aoc7():
-    inp = scrape()
     Hand = namedtuple('Hand', ['raw', 'bid', 'strength'])  # strength = TYPE + raw
     # for easier string sort
     raw_strength_map_p1 = {'T': 'a', 'J': 'b', 'Q': 'c', 'K': 'd', 'A': 'e'}
@@ -221,8 +219,7 @@ def aoc7():
     raw_strength_map_p2['J'] = '0'
 
     all_hands_p1, all_hands_p2 = [], []
-    for line in inp:
-        raw, bid = line.split()
+    for raw, bid in (line.split() for line in scrape()):
 
         occurrences = {card: raw.count(card) for card in raw}
         hand_type = get_poker_hand_type(occurrences)
@@ -246,15 +243,80 @@ def aoc7():
         acc_p1 += int(h.bid) * rank
     for rank, h in enumerate(all_hands_p2, 1):
         acc_p2 += int(h.bid) * rank
-    print("part1 :", acc_p1, "part2 :", acc_p2)
+    print("part 1:", acc_p1, "\npart 2:", acc_p2)
 
 
 def aoc8():
     pass
 
 
+def aoc9():
+    pass
+
+
+def aoc10():
+    pass
+
+
+def aoc11():
+    pass
+
+
+def aoc12():
+    pass
+
+
+def aoc13():
+    pass
+
+
+def aoc14():
+    pass
+
+
+def aoc15():
+    pass
+
+
+def aoc16():
+    pass
+
+
+def aoc17():
+    pass
+
+
+def aoc18():
+    pass
+
+
+def aoc19():
+    pass
+
+
+def aoc20():
+    pass
+
+
+def aoc21():
+    pass
+
+
+def aoc22():
+    pass
+
+
+def aoc23():
+    pass
+
+
+def aoc24():
+    pass
+
+
 if __name__ == '__main__':
     # start aoc for given calendar day
     today = datetime.date.today().day
-    today_f_name = "aoc" + str(today)
-    eval(today_f_name)()
+    aocs = [aoc1, aoc2, aoc3, aoc4, aoc5, aoc6, aoc7, aoc8, aoc9, aoc10, aoc11, aoc12, aoc13, aoc14, aoc15, aoc16,
+            aoc17, aoc18, aoc19, aoc20, aoc21, aoc22, aoc23, aoc24]
+    aocs[today - 1]()

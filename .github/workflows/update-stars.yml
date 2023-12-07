@@ -24,3 +24,4 @@ jobs:
         with:
           commit_message: Update badges
           file_pattern: '*.md'
+
