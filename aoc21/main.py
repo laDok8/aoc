@@ -1,24 +1,24 @@
+import os
+
 import numpy as np
 import pandas as pd
 import requests as r
-import os
 
-cookies = {
-    "session": "COOKIE_VALUE"}
+cookies = {"session": "COOKIE_VALUE"}
 
 
 def scrape(url, file):
     if os.path.exists(file):
         return
-    inp = r.get(url, cookies=cookies)
-    with open(file, 'w') as fp:
+    inp = r.get(url, cookies=cookies, timeout=1)
+    with open(file, 'w', encoding='UTF-8') as fp:
         fp.write(inp.text)
 
 
 def aoc1():
     scrape('https://adventofcode.com/2021/day/1/input', 'inp1.txt')
     # part 1
-    with open('inp1.txt', 'r') as fp:
+    with open('inp1.txt', 'r', encoding='UTF-8') as fp:
         ar = np.array([int(x) for x in fp.readlines()])
     print('decrease:', np.sum(ar[:-1] < ar[1:]))
 
@@ -47,7 +47,7 @@ def aoc3():
     scrape('https://adventofcode.com/2021/day/3/input', 'inp3.txt')
     # part 1
     inp = []
-    with open('inp3.txt', 'r') as fp:
+    with open('inp3.txt', 'r', encoding='UTF-8') as fp:
         for line in fp.readlines():
             row = []
             for c in line.replace('\n', ''):
@@ -59,16 +59,16 @@ def aoc3():
         res[0].append(np.argmax(np.bincount(col)))
         res[1].append(np.argmin(np.bincount(col)))
 
-    r = [''.join(str(x) for x in res[0]), ''.join(str(x) for x in res[1])]
-    print('power consumption:', int(r[0], 2) * int(r[1], 2))
+    _r = [''.join(str(x) for x in res[0]), ''.join(str(x) for x in res[1])]
+    print('power consumption:', int(_r[0], 2) * int(_r[1], 2))
     # part 2
     res1, res2, i = inp[:], inp[:], 0
     while np.shape(res1)[0] != 1 or np.shape(res2)[0] != 1:
-        min = np.argmin(np.bincount(res2.T[i]))
-        max = 1 if np.bincount(res1.T[i])[0] == np.bincount(res1.T[i])[1] else np.argmax(np.bincount(res1.T[i]))
-        res1, res2, i = res1[res1[:, i] == max], res2[res2[:, i] == min], i + 1
-    r = [''.join(str(x) for x in res1[0]), ''.join(str(x) for x in res2[0])]
-    print('life support rating:', int(r[0], 2) * int(r[1], 2))
+        _min = np.argmin(np.bincount(res2.T[i]))
+        _max = 1 if np.bincount(res1.T[i])[0] == np.bincount(res1.T[i])[1] else np.argmax(np.bincount(res1.T[i]))
+        res1, res2, i = res1[res1[:, i] == _max], res2[res2[:, i] == _min], i + 1
+    _r = [''.join(str(x) for x in res1[0]), ''.join(str(x) for x in res2[0])]
+    print('life support rating:', int(_r[0], 2) * int(_r[1], 2))
 
 
 aoc3()

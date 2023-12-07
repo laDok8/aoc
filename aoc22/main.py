@@ -5,8 +5,7 @@ import time
 import numpy as np
 import requests as r
 
-cookies = {
-    "session": "COOKIE_VALUE"}
+cookies = {"session": "COOKIE_VALUE"}
 
 
 def print_timing(func):
@@ -29,9 +28,9 @@ def scrape(url_generic: str = 'https://adventofcode.com/{year}/day/{day}/input',
     url = url_generic.format(year=year, day=day)
     file = file_generic.format(day=day)
     if os.path.exists(file):
-        return open(file).read().split(separator)
-    inp = r.get(url, cookies=cookies).text.rstrip()
-    with open(file, 'w') as fp:
+        return open(file, encoding='UTF-8').read().split(separator)
+    inp = r.get(url, cookies=cookies, timeout=1).text.rstrip()
+    with open(file, 'w', encoding='UTF-8') as fp:
         fp.write(inp)
     return inp.split(separator)
 
@@ -39,7 +38,7 @@ def scrape(url_generic: str = 'https://adventofcode.com/{year}/day/{day}/input',
 def aoc1():
     elf_sum, inp = [], scrape(day=1, separator='\n\n')
     for elf in inp:
-        elf_sum.append(sum([int(i) for i in elf.strip().split('\n')]))
+        elf_sum.append(sum(int(i) for i in elf.strip().split('\n')))
     elf_sum = -np.sort(-np.array(elf_sum))
     print(elf_sum[0], np.sum(elf_sum[:3]))
 
@@ -134,8 +133,8 @@ def aoc7():
 
     for i in inp:
         if i.startswith('$ cd'):
-            dir = i.split()[2]
-            cur_dir = cur_dir[:-1] if dir == '..' else cur_dir + (dir,)
+            _dir = i.split()[2]
+            cur_dir = cur_dir[:-1] if _dir == '..' else cur_dir + (_dir,)
             continue
 
         num = int(i.split()[0])
@@ -143,7 +142,7 @@ def aoc7():
             sums[cur_dir[:j]] = sums.get(cur_dir[:j], 0) + num
 
     needed_sum = int(7e7) - sums[('/',)]
-    s, s2 = sum(filter(lambda x: x < 1e5, sums.values())), min([x for x in sums.values() if x + needed_sum > int(3e7)])
+    s, s2 = sum(filter(lambda x: x < 1e5, sums.values())), min(x for x in sums.values() if x + needed_sum > int(3e7))
     print(s, s2)
 
 

@@ -1,0 +1,2 @@
+# inconclusive just for GHA
+pylint==3.0.2
