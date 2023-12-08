@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import datetime
 import inspect
+import math
 import os
 import re
 import time
@@ -246,8 +247,31 @@ def aoc7():
     print("part 1:", acc_p1, "\npart 2:", acc_p2)
 
 
+def calculate_path_d8(starts, nodes, steps) -> int:
+    period = [0] * len(starts)
+    for i in range(len(starts)):
+        # start_steps can be ignored
+        cur_n, step = starts[i], 0
+        while cur_n[-1] != 'Z':
+            cur_n = nodes[cur_n][0] if steps[step] == 'L' else nodes[cur_n][1]
+            period[i] += 1
+            step = (step + 1) % len(steps)
+    return math.lcm(*period)
+
+
 def aoc8():
-    pass
+    inp = scrape(separator='\n\n')
+    steps, nodes = inp[0], {}
+
+    for line in inp[1].split('\n'):
+        node_start, node_opts = map(str.strip, line.split('='))
+        _l, _r = re.sub(r'[\(\),]', '', node_opts).split()
+        nodes[node_start] = (_l, _r)
+
+    steps_p1 = calculate_path_d8(['AAA'], nodes, steps)
+    steps_p2 = calculate_path_d8([k for k in nodes.keys() if k[-1] == 'A'], nodes, steps)
+
+    print("part 2:", steps_p1, "\npart 2:", steps_p2)
 
 
 def aoc9():
