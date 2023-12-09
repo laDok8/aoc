@@ -265,7 +265,7 @@ def aoc8():
 
     for line in inp[1].split('\n'):
         node_start, node_opts = map(str.strip, line.split('='))
-        _l, _r = re.sub(r'[\(\),]', '', node_opts).split()
+        _l, _r = re.sub(r'[(),]', '', node_opts).split()
         nodes[node_start] = (_l, _r)
 
     steps_p1 = calculate_path_d8(['AAA'], nodes, steps)
@@ -275,7 +275,15 @@ def aoc8():
 
 
 def aoc9():
-    pass
+    acc_p1, acc_p2 = 0, 0
+    for nums in ([int(i) for i in line.split()] for line in scrape()):
+        last, first, diffs = [], [], nums
+        while len(set(diffs)) != 1:
+            diffs = [diffs[i + 1] - diffs[i] for i in range(len(diffs) - 1)]
+            last, first = last + diffs[-1:], first + diffs[:1]
+        acc_p1 += sum(last + nums[-1:])
+        acc_p2 += reduce(lambda _acc, x: x - _acc, reversed(nums[:1] + first))
+    print("part 1:", acc_p1, "\npart 2:", acc_p2)
 
 
 def aoc10():
