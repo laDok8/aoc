@@ -6,8 +6,10 @@ import os
 import re
 import time
 from collections import namedtuple
+from dataclasses import dataclass
 from functools import reduce
 
+import numpy as np
 import requests as r
 from dotenv import dotenv_values
 
@@ -286,8 +288,103 @@ def aoc9():
     print("part 1:", acc_p1, "\npart 2:", acc_p2)
 
 
+@dataclass
+class Pos:
+    x: int
+    y: int
+
+    def __add__(self, other):
+        if isinstance(other, Pos):
+            return Pos(self.x + other.x, self.y + other.y)
+        raise TypeError(f"unsupported operand type(s) for +: 'Pos' and '{type(other).__name__}'")
+
+    def __eq__(self, other):
+        return isinstance(other, Pos) and self.x == other.x and self.y == other.y
+
+
+# 4 boundary fill
+def try_fill(cur_loc: Pos, flooded: list, dst: list):
+    if cur_loc in flooded or dst[cur_loc.x][cur_loc.y] != 0:
+        return
+    flooded.append(cur_loc)
+    try_fill(cur_loc + Pos(0, -1), flooded, dst)
+    try_fill(cur_loc + Pos(0, 1), flooded, dst)
+    try_fill(cur_loc + Pos(-1, 0), flooded, dst)
+    try_fill(cur_loc + Pos(1, 0), flooded, dst)
+
+
 def aoc10():
-    pass
+    # switch X and Y for sanity
+    grid = np.transpose(np.array([list(line) for line in scrape()]))
+    dst = np.zeros(grid.shape, dtype=int)
+
+    start = np.where(grid == 'S')
+    start = Pos(start[0][0], start[1][0])
+    # WARN: manual step
+    grid[start.x, start.y] = '7'
+
+    # discover by queue
+    discovered = [start]
+    while discovered:
+        cur = discovered.pop(0)
+        cur_dst = dst[cur.x, cur.y]
+
+        if cur == start and dst[cur.x, cur.y] != 0:
+            dst[cur.x, cur.y] = 0
+            continue
+
+        p1 = Pos(cur.x, cur.y - 1) if grid[cur.x, cur.y] in ['|', 'L', 'J'] else None
+        p2 = Pos(cur.x, cur.y + 1) if grid[cur.x, cur.y] in ['|', 'F', '7'] else None
+        p3 = Pos(cur.x - 1, cur.y) if grid[cur.x, cur.y] in ['-', 'J', '7'] else None
+        p4 = Pos(cur.x + 1, cur.y) if grid[cur.x, cur.y] in ['-', 'L', 'F'] else None
+
+        if p1 and dst[p1.x, p1.y] == 0:
+            discovered.append(p1)
+            dst[p1.x, p1.y] = cur_dst + 1
+        if p2 and dst[p2.x, p2.y] == 0:
+            discovered.append(p2)
+            dst[p2.x, p2.y] = cur_dst + 1
+        if p3 and dst[p3.x, p3.y] == 0:
+            discovered.append(p3)
+            dst[p3.x, p3.y] = cur_dst + 1
+        if p4 and dst[p4.x, p4.y] == 0:
+            discovered.append(p4)
+            dst[p4.x, p4.y] = cur_dst + 1
+
+    print('part 1:', max(max(line) for line in dst))
+
+    dst[start.x, start.y] = 1  # mark as wall
+    directions = {'up': Pos(0, -1), 'right': Pos(1, 0), 'down': Pos(0, 1), 'left': Pos(-1, 0)}
+    dirs_clockwise = list(directions.keys())
+    flooded = []
+    # -1 is CCW, 1 is CW
+    direction_mapping = {'down': {'L': -1, 'J': 1}, 'up': {'F': 1, '7': -1}, 'left': {'L': 1, 'F': -1},
+                         'right': {'J': -1, '7': 1}}
+
+    # tuple cur_direction, current_inside like left right hand
+    # walk the maze and flood fill any empty space, works weirdly only if walked both ways
+    for cur_directives in [('left', 'down'), ('down', 'left')]:
+        # make first step
+        cur_step = start + directions[cur_directives[0]]
+
+        while cur_step != start:
+            try_fill(cur_step + directions[cur_directives[1]], flooded, dst)
+            if grid[cur_step.x, cur_step.y] not in ['L', 'J', '7', 'F']:
+                cur_step += directions[cur_directives[0]]
+                continue
+
+            # change direction
+            current_direction = dirs_clockwise.index(cur_directives[0])
+            current_inside = dirs_clockwise.index(cur_directives[1])
+
+            change = direction_mapping[cur_directives[0]][grid[cur_step.x, cur_step.y]]
+            next_direction = dirs_clockwise[(current_direction + change) % len(dirs_clockwise)]
+            next_inside = dirs_clockwise[(current_inside + change) % len(dirs_clockwise)]
+            cur_directives = (next_direction, next_inside)
+
+            cur_step += directions[cur_directives[0]]
+
+    print('part 2:', len(flooded))
 
 
 def aoc11():

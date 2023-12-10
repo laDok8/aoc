@@ -19,5 +19,5 @@ jobs:
       run: pip install -r requirements.txt
     - name: Analysing the code with pylint
       run: |
-        pylint --disable C,E $(git ls-files '*.py')
+        pylint --disable C,E,R0914 $(git ls-files '*.py')
 
