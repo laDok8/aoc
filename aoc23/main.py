@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from functools import reduce
 
 import numpy as np
+import pandas as pd
 import requests as r
 from dotenv import dotenv_values
 
@@ -388,7 +389,35 @@ def aoc10():
 
 
 def aoc11():
-    pass
+    for i, multi in enumerate([2, 1e6]):
+        df = pd.DataFrame([list(line) for line in scrape()])
+        # change all . to 1, later on even # will be 1
+        df = df.replace('.', 1)
+
+
+        for col in range(df.shape[1]):
+            if all(df[col] != '#'):
+                df[col] *= multi
+        for rw in range(df.shape[0]):
+            if all(df.iloc[rw] != '#'):
+                df.iloc[rw] *= multi
+
+        stars = np.where(df == '#')
+        stars = [Pos(x, y) for y, x in zip(stars[0], stars[1])]
+        acc, visited, df = 0, [], df.replace('#', 1)
+        # po diagonale jsou divnohodnoty, ale kdyz pujdu manhatansky mam zarucenou funkcnost
+
+        for s1 in stars:
+            visited.append(s1)
+            for s2 in stars:
+                if s2 in visited:
+                    continue
+
+                # no need add 1 as its in intersection
+                acc += sum(df.iloc[s2.y][min(s1.x, s2.x):max(s1.x, s2.x)]) + sum(
+                    df.iloc[:, s1.x][min(s1.y, s2.y):max(s1.y, s2.y)])
+
+        print(f'part {i+1}: {int(acc)}')
 
 
 def aoc12():
