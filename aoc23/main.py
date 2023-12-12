@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 import datetime
 import inspect
-from itertools import dropwhile, takewhile
 import math
 import os
 import re
 import time
 from collections import namedtuple
 from dataclasses import dataclass
-from functools import reduce
+from functools import reduce, cache
+from itertools import dropwhile, takewhile
 
 import numpy as np
 import pandas as pd
@@ -420,25 +420,7 @@ def aoc11():
         print(f'part {i + 1}: {int(acc)}')
 
 
-def create_groups(records):
-    Record = namedtuple('Record', ['len', 'type'])  # type = # - Damaged, ? - Unknown
-    groups = []
-    con = 0
-    for i in range(len(records)):
-        if records[i] == '.':
-            con = 0
-            continue
-
-        con += 1
-        if i == len(records) - 1 or records[i] != records[i + 1]:
-            groups.append((records[i], con))
-            con = 0
-            continue
-    # return only second element
-    return [i[1] for i in groups]
-
-
-# get amount of continous ? in the prefix
+# get amount of continuous ? in the prefix
 def start_symb(s: str, symbs: list[str]):
     return len(list(takewhile(lambda x: x in symbs, s)))
 
@@ -448,74 +430,61 @@ class Problem:
     rest_record: str  # type = # - Damaged, ? - Unknown, . - Empty
     groups: list[int]
 
+    def __hash__(self):
+        return hash((self.rest_record, tuple(self.groups)))
 
-@print_timing
+
+@cache
+def solve_cur_prob(cur_prob: Problem):
+    work_r, work_g = cur_prob.rest_record, cur_prob.groups
+    work_r = ''.join(dropwhile(lambda x: x == '.', work_r))
+
+    # it's okay
+    if len(work_r) == 0 and len(work_g) == 0:
+        return 1
+    # not okay
+    if len(work_r) == 0 and len(work_g) != 0:
+        return 0
+
+    # deterministic situation ##?. 3 -> ### or ##?? 3 -> ###
+    if (start_hash := start_symb(work_r, ['#'])) > 0:
+        # not enough #s or no groups
+        if len(work_g) == 0 or (to_fill := work_g[0] - start_hash) < 0:
+            return 0
+        work_r = work_r[start_hash:]
+        # remove rest of Qs ( q also may be dot)
+        if start_symb(work_r, ['?', '#']) < to_fill:
+            return 0
+        work_r = work_r[to_fill:]
+        # edge case
+        if len(work_r) == 0:
+            return 1 if len(work_g) == 1 else 0  # return solve_cur_prob(Problem(work_r, work_g[1:]))
+
+        # drop first q
+        if work_r[0] not in ['?', '.']:
+            return 0
+        work_r = work_r[1:]
+        # create new problem
+        return solve_cur_prob(Problem(work_r, work_g[1:]))
+    # non-deterministic ? situation -> create both # and . problems
+    if work_r[0] == '?':
+        return solve_cur_prob(Problem('#' + work_r[1:], work_g)) + solve_cur_prob(Problem(work_r[1:], work_g))
+    return 0
+
+
 def aoc12():
-    acc_part1 = 0
-    for record, groups in (line.split() for line in scrape()):
-        groups = [int(i) for i in groups.split(',')]  # list of real continuous damaged
-        open_probs = [Problem(record, groups)]
-        valid_counter = 0
+    for part, folds in enumerate([1, 5]):
+        acc = 0
 
-        # bottom up dynamic programming
-        while open_probs:
-            problem = open_probs.pop()
-            work_r, work_g = problem.rest_record, problem.groups
+        for record, groups in (line.split() for line in scrape()):
+            groups = [int(i) for i in groups.split(',')]  # list of really continuous damaged
 
-            # remove starting '.'
-            work_r = ''.join(dropwhile(lambda x: x == '.', work_r))
-            start_hash = start_symb(work_r, ['#'])
-            start_q = start_symb(work_r, ['?'])
+            # unfold problem
+            groups = [it for sublist in [groups] * folds for it in sublist]
+            record = ((record + '?') * folds)[:-1] if folds > 1 else record
 
-            # it's okay
-            if len(work_r) == 0 and len(work_g) == 0:
-                valid_counter += 1
-                continue
-            # not okay
-            if len(work_r) == 0 and len(work_g) != 0:
-                #print(work_r, work_g, "DEB-NO")
-                continue
-
-            # debug print
-            # print(work_r, work_g, "DEB")
-
-            # deterministic situation ##?. 3 -> ### or ##?? 3 -> ###
-            if start_hash > 0:
-                if len(work_g) == 0:
-                    continue
-                to_fill = work_g[0] - start_hash
-                # not enough #s
-                if to_fill < 0:
-                    continue
-                work_r = work_r[start_hash:]
-                new_breakable = start_symb(work_r, ['?', '#'])
-                # remove rest of Qs ( q also may be dot)
-                if new_breakable < to_fill:
-                    #print(work_r, work_g, "DEB-NO")
-                    continue
-                work_r = work_r[to_fill:]
-                # edge case
-                if len(work_r) == 0:
-                    open_probs.append(Problem(work_r, work_g[1:]))
-                    #print(work_r, work_g, "DEB-NO")
-                    continue
-
-                # drop first q
-                if not (work_r[0] == '?' or work_r[0] == '.'):
-                    #print(work_r, work_g, "DEB-NO")
-                    continue
-                if work_r[0] == '?':
-                    work_r = work_r[1:]
-                # create new problem
-                open_probs.append(Problem(work_r, work_g[1:]))
-                continue
-            # non-deterministic ? situation -> create both # and . problems
-            if start_q > 0:
-                open_probs.append(Problem('#' + work_r[1:], work_g))
-                open_probs.append(Problem(work_r[1:], work_g))
-                continue
-        acc_part1 += valid_counter
-    print('part 1:', acc_part1)
+            acc += solve_cur_prob(Problem(record, groups))
+        print(f'part {part + 1}: {int(acc)}')
 
 
 def aoc13():
