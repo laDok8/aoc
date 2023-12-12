@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import datetime
 import inspect
+from itertools import dropwhile, takewhile
 import math
 import os
 import re
@@ -429,34 +430,91 @@ def create_groups(records):
             continue
 
         con += 1
-        if i == len(records)-1 or records[i] != records[i+1]:
+        if i == len(records) - 1 or records[i] != records[i + 1]:
             groups.append((records[i], con))
             con = 0
             continue
     # return only second element
     return [i[1] for i in groups]
 
+
+# get amount of continous ? in the prefix
+def start_symb(s: str, symbs: list[str]):
+    return len(list(takewhile(lambda x: x in symbs, s)))
+
+
+@dataclass(slots=True)
+class Problem:
+    rest_record: str  # type = # - Damaged, ? - Unknown, . - Empty
+    groups: list[int]
+
+
 @print_timing
 def aoc12():
     acc_part1 = 0
     for record, groups in (line.split() for line in scrape()):
         groups = [int(i) for i in groups.split(',')]  # list of real continuous damaged
+        open_probs = [Problem(record, groups)]
+        valid_counter = 0
 
-        succress_acc = 0
-        for num in range(2 ** record.count('?')):
-            # create all permuntations of records ( switching ? -> # OR .)
-            records_cp = list(record[:])
-            for i in range(len(records_cp)):
-                if records_cp[i] == '?':
-                    records_cp[i] = '#' if num % 2 == 0 else '.'
-                    num //= 2
-            records_cp = ''.join(records_cp)
-            record_groups = create_groups(records_cp)
-            #print(records_cp,'->',record_groups)
-            if record_groups == groups:
-                succress_acc += 1
-        #print(record,"->",succress_acc)
-        acc_part1 += succress_acc
+        # bottom up dynamic programming
+        while open_probs:
+            problem = open_probs.pop()
+            work_r, work_g = problem.rest_record, problem.groups
+
+            # remove starting '.'
+            work_r = ''.join(dropwhile(lambda x: x == '.', work_r))
+            start_hash = start_symb(work_r, ['#'])
+            start_q = start_symb(work_r, ['?'])
+
+            # it's okay
+            if len(work_r) == 0 and len(work_g) == 0:
+                valid_counter += 1
+                continue
+            # not okay
+            if len(work_r) == 0 and len(work_g) != 0:
+                #print(work_r, work_g, "DEB-NO")
+                continue
+
+            # debug print
+            # print(work_r, work_g, "DEB")
+
+            # deterministic situation ##?. 3 -> ### or ##?? 3 -> ###
+            if start_hash > 0:
+                if len(work_g) == 0:
+                    continue
+                to_fill = work_g[0] - start_hash
+                # not enough #s
+                if to_fill < 0:
+                    continue
+                work_r = work_r[start_hash:]
+                new_breakable = start_symb(work_r, ['?', '#'])
+                # remove rest of Qs ( q also may be dot)
+                if new_breakable < to_fill:
+                    #print(work_r, work_g, "DEB-NO")
+                    continue
+                work_r = work_r[to_fill:]
+                # edge case
+                if len(work_r) == 0:
+                    open_probs.append(Problem(work_r, work_g[1:]))
+                    #print(work_r, work_g, "DEB-NO")
+                    continue
+
+                # drop first q
+                if not (work_r[0] == '?' or work_r[0] == '.'):
+                    #print(work_r, work_g, "DEB-NO")
+                    continue
+                if work_r[0] == '?':
+                    work_r = work_r[1:]
+                # create new problem
+                open_probs.append(Problem(work_r, work_g[1:]))
+                continue
+            # non-deterministic ? situation -> create both # and . problems
+            if start_q > 0:
+                open_probs.append(Problem('#' + work_r[1:], work_g))
+                open_probs.append(Problem(work_r[1:], work_g))
+                continue
+        acc_part1 += valid_counter
     print('part 1:', acc_part1)
 
 
