@@ -394,7 +394,6 @@ def aoc11():
         # change all . to 1, later on even # will be 1
         df = df.replace('.', 1)
 
-
         for col in range(df.shape[1]):
             if all(df[col] != '#'):
                 df[col] *= multi
@@ -417,11 +416,48 @@ def aoc11():
                 acc += sum(df.iloc[s2.y][min(s1.x, s2.x):max(s1.x, s2.x)]) + sum(
                     df.iloc[:, s1.x][min(s1.y, s2.y):max(s1.y, s2.y)])
 
-        print(f'part {i+1}: {int(acc)}')
+        print(f'part {i + 1}: {int(acc)}')
 
 
+def create_groups(records):
+    Record = namedtuple('Record', ['len', 'type'])  # type = # - Damaged, ? - Unknown
+    groups = []
+    con = 0
+    for i in range(len(records)):
+        if records[i] == '.':
+            con = 0
+            continue
+
+        con += 1
+        if i == len(records)-1 or records[i] != records[i+1]:
+            groups.append((records[i], con))
+            con = 0
+            continue
+    # return only second element
+    return [i[1] for i in groups]
+
+@print_timing
 def aoc12():
-    pass
+    acc_part1 = 0
+    for record, groups in (line.split() for line in scrape()):
+        groups = [int(i) for i in groups.split(',')]  # list of real continuous damaged
+
+        succress_acc = 0
+        for num in range(2 ** record.count('?')):
+            # create all permuntations of records ( switching ? -> # OR .)
+            records_cp = list(record[:])
+            for i in range(len(records_cp)):
+                if records_cp[i] == '?':
+                    records_cp[i] = '#' if num % 2 == 0 else '.'
+                    num //= 2
+            records_cp = ''.join(records_cp)
+            record_groups = create_groups(records_cp)
+            #print(records_cp,'->',record_groups)
+            if record_groups == groups:
+                succress_acc += 1
+        #print(record,"->",succress_acc)
+        acc_part1 += succress_acc
+    print('part 1:', acc_part1)
 
 
 def aoc13():
