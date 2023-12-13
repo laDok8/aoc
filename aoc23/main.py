@@ -488,7 +488,49 @@ def aoc12():
 
 
 def aoc13():
-    pass
+    inp = scrape(separator='\n\n')
+    acc_p1 = 0
+    for puzzle in inp:
+        grid = np.array([list(line) for line in puzzle.split('\n')], dtype=str)
+        line_hashes = []
+        for line in grid:
+            line_hashes.append(hash(''.join(line)))
+        column_hashes = []
+        for line in np.transpose(grid):
+            column_hashes.append(hash(''.join(line)))
+
+        row_match = -1
+        col_match = -1
+        # find mirroring in rows
+        for i in range(1,len(line_hashes)):
+            shortest_end = min(len(line_hashes[:i]), len(line_hashes[i:]))
+            if line_hashes[i-shortest_end:i] == list(reversed(line_hashes[i:i+shortest_end])):
+                row_match = i
+                #print("ROW",i)
+                break
+
+        for i in range(1,len(column_hashes)):
+            shortest_end = min(len(column_hashes[:i]), len(column_hashes[i:]))
+            if column_hashes[i-shortest_end:i] == list(reversed(column_hashes[i:i+shortest_end])):
+                col_match = i
+                #print("COL",i)
+                break
+
+        if col_match != -1 and row_match != -1:
+            print('WARN both')
+            print(col_match)
+            print(row_match)
+            print(''.join(grid[row_match][:col_match]))
+
+        if col_match != -1:
+            acc_p1 += col_match
+        if row_match != -1:
+            acc_p1 += (row_match * 100)
+
+
+        #print(grid)
+        #break
+    print("part 1:", acc_p1)
 
 
 def aoc14():
