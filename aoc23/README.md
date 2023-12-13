@@ -1,5 +1,5 @@
 [![](https://badgen.net/github/license/laDok8/aoc)](../LICENSE)
-[![](https://badgen.net/badge/⭐/25/yellow)](main.py)
+[![](https://badgen.net/badge/⭐/26/yellow)](main.py)
 ![](https://badgen.net/badge/language/python)
 [![Pylint](https://github.com/laDok8/aoc/actions/workflows/pylint.yml/badge.svg?branch=master)](https://github.com/laDok8/aoc/actions/workflows/pylint.yml)
 

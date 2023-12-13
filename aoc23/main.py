@@ -487,50 +487,51 @@ def aoc12():
         print(f'part {part + 1}: {int(acc)}')
 
 
+# returns number of diffs between 2 strs
+def diff_str(s1, s2) -> int:
+    return sum(1 for a, b in zip(s1, s2) if a != b)
+
+
 def aoc13():
     inp = scrape(separator='\n\n')
-    acc_p1 = 0
-    for puzzle in inp:
-        grid = np.array([list(line) for line in puzzle.split('\n')], dtype=str)
-        line_hashes = []
-        for line in grid:
-            line_hashes.append(hash(''.join(line)))
-        column_hashes = []
-        for line in np.transpose(grid):
-            column_hashes.append(hash(''.join(line)))
 
-        row_match = -1
-        col_match = -1
-        # find mirroring in rows
-        for i in range(1,len(line_hashes)):
-            shortest_end = min(len(line_hashes[:i]), len(line_hashes[i:]))
-            if line_hashes[i-shortest_end:i] == list(reversed(line_hashes[i:i+shortest_end])):
-                row_match = i
-                #print("ROW",i)
-                break
+    for part in range(2):
+        acc = 0
+        for puzzle in inp:
+            grid = np.array([list(line) for line in puzzle.split('\n')], dtype=str)
+            line_str, column_str = [], []
+            for line in grid:
+                line_str.append(''.join(line))
+            for line in np.transpose(grid):
+                column_str.append(''.join(line))
 
-        for i in range(1,len(column_hashes)):
-            shortest_end = min(len(column_hashes[:i]), len(column_hashes[i:]))
-            if column_hashes[i-shortest_end:i] == list(reversed(column_hashes[i:i+shortest_end])):
-                col_match = i
-                #print("COL",i)
-                break
+            row_match, col_match = -1, -1
 
-        if col_match != -1 and row_match != -1:
-            print('WARN both')
-            print(col_match)
-            print(row_match)
-            print(''.join(grid[row_match][:col_match]))
+            # find mirroring in rows
+            for i in range(1, len(line_str)):
+                diffs, shortest_end = 0, min(len(line_str[:i]), len(line_str[i:]))
+                for j in range(0, shortest_end):
+                    diffs += diff_str(line_str[i - 1 - j], line_str[i + j])
 
-        if col_match != -1:
-            acc_p1 += col_match
-        if row_match != -1:
-            acc_p1 += (row_match * 100)
+                if diffs == part:
+                    row_match = i
+                    break
+            if row_match != -1:
+                acc += (row_match * 100)
+                continue
 
+            # find mirroring in cols
+            for i in range(1, len(column_str)):
+                diffs, shortest_end = 0, min(len(column_str[:i]), len(column_str[i:]))
+                for j in range(0, shortest_end):
+                    diffs += diff_str(column_str[i - 1 - j], column_str[i + j])
 
-        #print(grid)
-        #break
-    print("part 1:", acc_p1)
+                if diffs == part:
+                    col_match = i
+                    break
+            # there's always one
+            acc += col_match
+        print(f'part {part + 1}: {int(acc)}')
 
 
 def aoc14():
