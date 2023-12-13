@@ -11,7 +11,6 @@ from functools import reduce, cache
 from itertools import dropwhile, takewhile
 
 import numpy as np
-import pandas as pd
 import requests as r
 from dotenv import dotenv_values
 
@@ -318,10 +317,21 @@ def try_fill(cur_loc: Pos, flooded: list, dst: list):
 def aoc10():
     # switch X and Y for sanity
     grid = np.transpose(np.array([list(line) for line in scrape()]))
-    dst = np.zeros(grid.shape, dtype=int)
 
     start = np.where(grid == 'S')
     start = Pos(start[0][0], start[1][0])
+
+    directions = {'up': Pos(0, -1), 'right': Pos(1, 0), 'down': Pos(0, 1), 'left': Pos(-1, 0)}
+    dirs_clockwise = list(directions.keys())
+    direction_mapping = {'down': {'L': -1, 'J': 1}, 'up': {'F': 1, '7': -1}, 'left': {'L': 1, 'F': -1},
+                         'right': {'J': -1, '7': 1}}
+
+    break
+
+    # DFS mark direction for each cell ↑ (even multiple) means inside the maze ... then first  ↓  means outside
+    # part 1 is half of the maze round down
+
+
     # WARN: manual step
     grid[start.x, start.y] = '7'
 
@@ -358,10 +368,10 @@ def aoc10():
     dst[start.x, start.y] = 1  # mark as wall
     directions = {'up': Pos(0, -1), 'right': Pos(1, 0), 'down': Pos(0, 1), 'left': Pos(-1, 0)}
     dirs_clockwise = list(directions.keys())
-    flooded = []
-    # -1 is CCW, 1 is CW
     direction_mapping = {'down': {'L': -1, 'J': 1}, 'up': {'F': 1, '7': -1}, 'left': {'L': 1, 'F': -1},
                          'right': {'J': -1, '7': 1}}
+    flooded = []
+    # -1 is CCW, 1 is CW
 
     # tuple cur_direction, current_inside like left right hand
     # walk the maze and flood fill any empty space, works weirdly only if walked both ways
@@ -390,34 +400,34 @@ def aoc10():
 
 
 def aoc11():
-    for i, multi in enumerate([2, 1e6]):
-        df = pd.DataFrame([list(line) for line in scrape()])
-        # change all . to 1, later on even # will be 1
-        df = df.replace('.', 1)
+    for part, multi in enumerate([2, 1e6]):
+        grid = np.array([list(line) for line in scrape()])
+        stars = np.where(grid == '#')
+        stars = [Pos(x, y) for x, y in zip(stars[0], stars[1])]
 
-        for col in range(df.shape[1]):
-            if all(df[col] != '#'):
-                df[col] *= multi
-        for rw in range(df.shape[0]):
-            if all(df.iloc[rw] != '#'):
-                df.iloc[rw] *= multi
+        def adjust_coordinates(stars: list[Pos], axis: str, _multi: int):
+            max_coord = max(stars, key=lambda x: getattr(x, axis)).__dict__[axis]
 
-        stars = np.where(df == '#')
-        stars = [Pos(x, y) for y, x in zip(stars[0], stars[1])]
-        acc, visited, df = 0, [], df.replace('#', 1)
-        # po diagonale jsou divnohodnoty, ale kdyz pujdu manhatansky mam zarucenou funkcnost
+            for i in range(max_coord, 0, -1):
+                if any(getattr(s, axis) == i for s in stars):
+                    continue
+                for s in stars:
+                    if getattr(s, axis) > i:
+                        setattr(s, axis, getattr(s, axis) + (_multi - 1))
 
+        # simulate aging
+        adjust_coordinates(stars, 'x', multi)
+        adjust_coordinates(stars, 'y', multi)
+
+        acc, visited = 0, []
         for s1 in stars:
             visited.append(s1)
             for s2 in stars:
                 if s2 in visited:
                     continue
+                acc += abs(s1.x - s2.x) + abs(s1.y - s2.y)
 
-                # no need add 1 as its in intersection
-                acc += sum(df.iloc[s2.y][min(s1.x, s2.x):max(s1.x, s2.x)]) + sum(
-                    df.iloc[:, s1.x][min(s1.y, s2.y):max(s1.y, s2.y)])
-
-        print(f'part {i + 1}: {int(acc)}')
+        print(f'part {part + 1}: {int(acc)}')
 
 
 # get amount of continuous ? in the prefix
@@ -434,6 +444,27 @@ class Problem:
         return hash((self.rest_record, tuple(self.groups)))
 
 
+def solve_hash(start_hash: int, work_r: str, work_g: list[int]):
+    # not enough #s or no groups
+    if len(work_g) == 0 or (to_fill := work_g[0] - start_hash) < 0:
+        return 0
+    work_r = work_r[start_hash:]
+    # remove rest of Qs ( q also may be dot)
+    if start_symb(work_r, ['?', '#']) < to_fill:
+        return 0
+    work_r = work_r[to_fill:]
+    # edge case
+    if len(work_r) == 0:
+        return 1 if len(work_g) == 1 else 0  # return solve_cur_prob(Problem(work_r, work_g[1:]))
+
+    # drop first q
+    if work_r[0] not in ['?', '.']:
+        return 0
+    work_r = work_r[1:]
+    # create new problem
+    return solve_cur_prob(Problem(work_r, work_g[1:]))
+
+
 @cache
 def solve_cur_prob(cur_prob: Problem):
     work_r, work_g = cur_prob.rest_record, cur_prob.groups
@@ -448,24 +479,7 @@ def solve_cur_prob(cur_prob: Problem):
 
     # deterministic situation ##?. 3 -> ### or ##?? 3 -> ###
     if (start_hash := start_symb(work_r, ['#'])) > 0:
-        # not enough #s or no groups
-        if len(work_g) == 0 or (to_fill := work_g[0] - start_hash) < 0:
-            return 0
-        work_r = work_r[start_hash:]
-        # remove rest of Qs ( q also may be dot)
-        if start_symb(work_r, ['?', '#']) < to_fill:
-            return 0
-        work_r = work_r[to_fill:]
-        # edge case
-        if len(work_r) == 0:
-            return 1 if len(work_g) == 1 else 0  # return solve_cur_prob(Problem(work_r, work_g[1:]))
-
-        # drop first q
-        if work_r[0] not in ['?', '.']:
-            return 0
-        work_r = work_r[1:]
-        # create new problem
-        return solve_cur_prob(Problem(work_r, work_g[1:]))
+        return solve_hash(start_hash, work_r, work_g)
     # non-deterministic ? situation -> create both # and . problems
     if work_r[0] == '?':
         return solve_cur_prob(Problem('#' + work_r[1:], work_g)) + solve_cur_prob(Problem(work_r[1:], work_g))
@@ -488,7 +502,7 @@ def aoc12():
 
 
 # returns number of diffs between 2 strs
-def diff_str(s1, s2) -> int:
+def diff_str(s1: str, s2: str) -> int:
     return sum(1 for a, b in zip(s1, s2) if a != b)
 
 
@@ -617,6 +631,7 @@ def aoc24():
 if __name__ == '__main__':
     # start aoc for given calendar day
     today = datetime.date.today().day
+    today = 11
     aocs = [aoc1, aoc2, aoc3, aoc4, aoc5, aoc6, aoc7, aoc8, aoc9, aoc10, aoc11, aoc12, aoc13, aoc14, aoc15, aoc16,
             aoc17, aoc18, aoc19, aoc20, aoc21, aoc22, aoc23, aoc24]
     aocs[today - 1]()
