@@ -289,7 +289,7 @@ def aoc9():
     print("part 1:", acc_p1, "\npart 2:", acc_p2)
 
 
-@dataclass
+@dataclass(slots=True)
 class Pos:
     x: int
     y: int
@@ -301,6 +301,12 @@ class Pos:
 
     def __eq__(self, other):
         return isinstance(other, Pos) and self.x == other.x and self.y == other.y
+
+    def __hash__(self):
+        return hash((self.x, self.y))
+
+    def distance(self, other):
+        return abs(self.x - other.x) + abs(self.y - other.y)
 
 
 # 4 boundary fill
@@ -317,21 +323,10 @@ def try_fill(cur_loc: Pos, flooded: list, dst: list):
 def aoc10():
     # switch X and Y for sanity
     grid = np.transpose(np.array([list(line) for line in scrape()]))
+    dst = np.zeros(grid.shape, dtype=int)
 
     start = np.where(grid == 'S')
     start = Pos(start[0][0], start[1][0])
-
-    directions = {'up': Pos(0, -1), 'right': Pos(1, 0), 'down': Pos(0, 1), 'left': Pos(-1, 0)}
-    dirs_clockwise = list(directions.keys())
-    direction_mapping = {'down': {'L': -1, 'J': 1}, 'up': {'F': 1, '7': -1}, 'left': {'L': 1, 'F': -1},
-                         'right': {'J': -1, '7': 1}}
-
-    break
-
-    # DFS mark direction for each cell ↑ (even multiple) means inside the maze ... then first  ↓  means outside
-    # part 1 is half of the maze round down
-
-
     # WARN: manual step
     grid[start.x, start.y] = '7'
 
@@ -339,8 +334,6 @@ def aoc10():
     discovered = [start]
     while discovered:
         cur = discovered.pop(0)
-        cur_dst = dst[cur.x, cur.y]
-
         if cur == start and dst[cur.x, cur.y] != 0:
             dst[cur.x, cur.y] = 0
             continue
@@ -352,26 +345,26 @@ def aoc10():
 
         if p1 and dst[p1.x, p1.y] == 0:
             discovered.append(p1)
-            dst[p1.x, p1.y] = cur_dst + 1
+            dst[p1.x, p1.y] = dst[cur.x, cur.y] + 1
         if p2 and dst[p2.x, p2.y] == 0:
             discovered.append(p2)
-            dst[p2.x, p2.y] = cur_dst + 1
+            dst[p2.x, p2.y] = dst[cur.x, cur.y] + 1
         if p3 and dst[p3.x, p3.y] == 0:
             discovered.append(p3)
-            dst[p3.x, p3.y] = cur_dst + 1
+            dst[p3.x, p3.y] = dst[cur.x, cur.y] + 1
         if p4 and dst[p4.x, p4.y] == 0:
             discovered.append(p4)
-            dst[p4.x, p4.y] = cur_dst + 1
+            dst[p4.x, p4.y] = dst[cur.x, cur.y] + 1
 
     print('part 1:', max(max(line) for line in dst))
 
     dst[start.x, start.y] = 1  # mark as wall
     directions = {'up': Pos(0, -1), 'right': Pos(1, 0), 'down': Pos(0, 1), 'left': Pos(-1, 0)}
     dirs_clockwise = list(directions.keys())
-    direction_mapping = {'down': {'L': -1, 'J': 1}, 'up': {'F': 1, '7': -1}, 'left': {'L': 1, 'F': -1},
-                         'right': {'J': -1, '7': 1}}
     flooded = []
     # -1 is CCW, 1 is CW
+    direction_mapping = {'down': {'L': -1, 'J': 1}, 'up': {'F': 1, '7': -1}, 'left': {'L': 1, 'F': -1},
+                         'right': {'J': -1, '7': 1}}
 
     # tuple cur_direction, current_inside like left right hand
     # walk the maze and flood fill any empty space, works weirdly only if walked both ways
@@ -386,13 +379,11 @@ def aoc10():
                 continue
 
             # change direction
-            current_direction = dirs_clockwise.index(cur_directives[0])
-            current_inside = dirs_clockwise.index(cur_directives[1])
-
-            change = direction_mapping[cur_directives[0]][grid[cur_step.x, cur_step.y]]
-            next_direction = dirs_clockwise[(current_direction + change) % len(dirs_clockwise)]
-            next_inside = dirs_clockwise[(current_inside + change) % len(dirs_clockwise)]
-            cur_directives = (next_direction, next_inside)
+            cur_directives = (dirs_clockwise[(dirs_clockwise.index(cur_directives[0]) +
+                                              direction_mapping[cur_directives[0]][grid[cur_step.x, cur_step.y]]) % len(
+                dirs_clockwise)], dirs_clockwise[(dirs_clockwise.index(cur_directives[1]) +
+                                                  direction_mapping[cur_directives[0]][
+                                                      grid[cur_step.x, cur_step.y]]) % len(dirs_clockwise)])
 
             cur_step += directions[cur_directives[0]]
 
@@ -425,7 +416,7 @@ def aoc11():
             for s2 in stars:
                 if s2 in visited:
                     continue
-                acc += abs(s1.x - s2.x) + abs(s1.y - s2.y)
+                acc += s1.distance(s2)
 
         print(f'part {part + 1}: {int(acc)}')
 
@@ -631,7 +622,7 @@ def aoc24():
 if __name__ == '__main__':
     # start aoc for given calendar day
     today = datetime.date.today().day
-    today = 11
+    today = 10
     aocs = [aoc1, aoc2, aoc3, aoc4, aoc5, aoc6, aoc7, aoc8, aoc9, aoc10, aoc11, aoc12, aoc13, aoc14, aoc15, aoc16,
             aoc17, aoc18, aoc19, aoc20, aoc21, aoc22, aoc23, aoc24]
     aocs[today - 1]()
