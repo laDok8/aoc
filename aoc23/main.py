@@ -534,28 +534,44 @@ def aoc13():
         print(f'part {part + 1}: {int(acc)}')
 
 
-def aoc14():
-    # switch X and Y for sanity
-    grid = np.array([list(line) for line in scrape()], dtype=str)
-    for x in range(grid.shape[1]):
-        for y in range(1, grid.shape[0]):
-            if grid[y, x] == 'O' and grid[y-1, x] == '.':
-                above = np.flip(grid[:y, x])
-                taken = 0
-                for c in above:
-                    if c == '.':
-                        taken += 1
-                    else:
-                        break
-                new_pos = y - taken # - len(list(takewhile(lambda c: c not in ['#','O'], above)))
-                grid[y, x], grid[new_pos, x] = '.', 'O'
-    #print(grid)
-    acc_p1 = 0
+def d14_supp_strength(grid) -> int:
+    acc = 0
     for y in range(grid.shape[0]):
         row_val = grid.shape[0] - y
-        occs = ''.join(grid[y,:]).count('O')
-        acc_p1 += occs * row_val
-    print('part 1:', acc_p1)
+        occs = ''.join(grid[y, :]).count('O')
+        acc += occs * row_val
+    return acc
+
+
+def aoc14():
+    grid = np.array([list(line) for line in scrape()], dtype=str)
+
+    cached,limit,itr = {},int(1e9),0
+    while True:
+        if itr >= limit:
+            break
+
+        for rot in range(4):
+            for x, y in np.ndindex(grid.shape):
+                if grid[y, x] == 'O' and grid[y - 1, x] == '.':
+                    above = np.flip(grid[:y, x])
+                    taken = len(list(takewhile(lambda c: c == '.', above)))
+                    new_pos = y - taken
+                    grid[y, x], grid[new_pos, x] = '.', 'O'
+
+            if itr == 0 and rot == 0:
+                print("part 1:", d14_supp_strength(grid), end='')
+            grid = np.rot90(grid, 3)
+
+        if prev_seen := cached.get(hash(grid.tobytes())):
+            diff = itr - prev_seen
+            while itr + diff < limit:
+                itr += diff
+        else:
+            cached[hash(grid.tobytes())] = itr
+        itr += 1
+
+    print(' part 2:', d14_supp_strength(grid))
 
 
 def aoc15():
