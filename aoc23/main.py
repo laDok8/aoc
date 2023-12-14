@@ -535,7 +535,27 @@ def aoc13():
 
 
 def aoc14():
-    pass
+    # switch X and Y for sanity
+    grid = np.array([list(line) for line in scrape()], dtype=str)
+    for x in range(grid.shape[1]):
+        for y in range(1, grid.shape[0]):
+            if grid[y, x] == 'O' and grid[y-1, x] == '.':
+                above = np.flip(grid[:y, x])
+                taken = 0
+                for c in above:
+                    if c == '.':
+                        taken += 1
+                    else:
+                        break
+                new_pos = y - taken # - len(list(takewhile(lambda c: c not in ['#','O'], above)))
+                grid[y, x], grid[new_pos, x] = '.', 'O'
+    #print(grid)
+    acc_p1 = 0
+    for y in range(grid.shape[0]):
+        row_val = grid.shape[0] - y
+        occs = ''.join(grid[y,:]).count('O')
+        acc_p1 += occs * row_val
+    print('part 1:', acc_p1)
 
 
 def aoc15():
