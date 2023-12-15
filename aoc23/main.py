@@ -551,7 +551,7 @@ def d14_supp_strength(grid) -> int:
 def aoc14():
     grid = np.array([list(line) for line in scrape()], dtype=str)
 
-    cached,limit,itr = {},int(1e9),0
+    cached, limit, itr = {}, int(1e9), 0
     while True:
         if itr >= limit:
             break
@@ -579,8 +579,57 @@ def aoc14():
     print(' part 2:', d14_supp_strength(grid))
 
 
+def d15_hash(inp: str) -> int:
+    acc = 0
+    for c in inp:
+        acc = (acc + ord(c)) * 17
+        acc = acc % 256
+    return acc
+    #TODO: foldright
+
+
+@print_timing
 def aoc15():
-    pass
+    inp = scrape(separator=',')
+    acc = 0
+    for puz in inp:
+        acc += d15_hash(puz)
+
+    boxes_lbls = [[] for _ in range(256)]
+    boxes_focals = [[] for _ in range(256)]
+    for puz in inp:
+        # find index of = or -
+        idx = puz.find('=')
+        if idx == -1:
+            idx = puz.find('-')
+
+        lbl = puz[:idx]
+        box_id = d15_hash(lbl)
+        focal = puz[idx + 1:]
+        if puz[idx:idx + 1] == '=':
+            idx = boxes_lbls[box_id].index(lbl) if lbl in boxes_lbls[box_id] else -1
+            if idx == -1:
+                boxes_lbls[box_id].append(lbl)
+                boxes_focals[box_id].append(int(focal))
+            else:
+                boxes_focals[box_id][idx] = int(focal)
+        else:
+            idx = boxes_lbls[box_id].index(lbl) if lbl in boxes_lbls[box_id] else -1
+            if idx != -1:
+                boxes_lbls[box_id].pop(idx)
+                boxes_focals[box_id].pop(idx)
+
+    # remove empty lists in boxes
+    boxes_lbls = [i for i in boxes_lbls if len(i) != 0]
+    boxes_focals = [i for i in boxes_focals if len(i) != 0]
+
+    acc_p2 = 0
+    for lbls, focals in zip(boxes_lbls, boxes_focals):
+        box_id = d15_hash(lbls[0]) + 1
+        for i, f in enumerate(focals, 1):
+            acc_p2 += box_id * i * f
+
+    print('part 1:', acc, 'part 1:', acc_p2)
 
 
 def aoc16():
@@ -622,7 +671,6 @@ def aoc24():
 if __name__ == '__main__':
     # start aoc for given calendar day
     today = datetime.date.today().day
-    today = 10
     aocs = [aoc1, aoc2, aoc3, aoc4, aoc5, aoc6, aoc7, aoc8, aoc9, aoc10, aoc11, aoc12, aoc13, aoc14, aoc15, aoc16,
             aoc17, aoc18, aoc19, aoc20, aoc21, aoc22, aoc23, aoc24]
     aocs[today - 1]()
