@@ -580,33 +580,22 @@ def aoc14():
 
 
 def d15_hash(inp: str) -> int:
-    acc = 0
-    for c in inp:
-        acc = (acc + ord(c)) * 17
-        acc = acc % 256
-    return acc
-    #TODO: foldright
+    return reduce(lambda _acc, x: (_acc + ord(x))*17 %256,inp,0)
 
 
-@print_timing
 def aoc15():
-    inp = scrape(separator=',')
-    acc = 0
-    for puz in inp:
-        acc += d15_hash(puz)
+    acc_p1, inp = 0, scrape(separator=',')
 
     boxes_lbls = [[] for _ in range(256)]
     boxes_focals = [[] for _ in range(256)]
     for puz in inp:
-        # find index of = or -
-        idx = puz.find('=')
-        if idx == -1:
-            idx = puz.find('-')
+        acc_p1 += d15_hash(puz)
 
+        idx = puz.find('=') if '=' in puz else puz.find('-')
         lbl = puz[:idx]
-        box_id = d15_hash(lbl)
-        focal = puz[idx + 1:]
-        if puz[idx:idx + 1] == '=':
+        box_id, focal = d15_hash(lbl), puz[idx + 1:]
+
+        if puz[idx] == '=':
             idx = boxes_lbls[box_id].index(lbl) if lbl in boxes_lbls[box_id] else -1
             if idx == -1:
                 boxes_lbls[box_id].append(lbl)
@@ -619,17 +608,15 @@ def aoc15():
                 boxes_lbls[box_id].pop(idx)
                 boxes_focals[box_id].pop(idx)
 
-    # remove empty lists in boxes
-    boxes_lbls = [i for i in boxes_lbls if len(i) != 0]
-    boxes_focals = [i for i in boxes_focals if len(i) != 0]
-
     acc_p2 = 0
     for lbls, focals in zip(boxes_lbls, boxes_focals):
+        if len(lbls) == 0:
+            continue
         box_id = d15_hash(lbls[0]) + 1
         for i, f in enumerate(focals, 1):
             acc_p2 += box_id * i * f
 
-    print('part 1:', acc, 'part 1:', acc_p2)
+    print('part 1:', acc_p1, 'part 1:', acc_p2)
 
 
 def aoc16():
