@@ -302,7 +302,7 @@ class Pos:
         return self.x == other.x and self.y == other.y and self.dir == other.dir
 
     def __hash__(self):
-        return hash((self.x, self.y))
+        return hash((self.x, self.y, self.dir))
 
     def distance(self, other):
         return abs(self.x - other.x) + abs(self.y - other.y)
@@ -316,8 +316,7 @@ class Pos:
 
     # move
     def step(self):
-        direction_mapping = {0: lambda: Pos(self.x, self.y - 1, self.dir),
-                             1: lambda: Pos(self.x + 1, self.y, self.dir),
+        direction_mapping = {0: lambda: Pos(self.x, self.y - 1, self.dir), 1: lambda: Pos(self.x + 1, self.y, self.dir),
                              2: lambda: Pos(self.x, self.y + 1, self.dir),
                              3: lambda: Pos(self.x - 1, self.y, self.dir), }
 
@@ -633,6 +632,7 @@ def aoc15():
 
     print('part 1:', acc_p1, 'part 1:', acc_p2)
 
+
 def _pretty_print_grid(grid):
     for y in range(grid.shape[0]):
         for x in range(grid.shape[1]):
@@ -640,17 +640,18 @@ def _pretty_print_grid(grid):
         print()
     print()
 
-@print_timing
+
 def aoc16():
-    # veryyy slow
+    # very slow due to Pos abstraction but hash helps
     # switch X and Y for sanity
     grid = np.array([list(line) for line in scrape()]).T
 
     possible_starts = []
-    for y in range(grid.shape[1]):
+    max_x, max_y = grid.shape[0], grid.shape[1]
+    for y in range(max_y):
         possible_starts.append(Pos(0, y, 1))
         possible_starts.append(Pos(grid.shape[0] - 1, y, 3))
-    for x in range(grid.shape[0]):
+    for x in range(max_x):
         possible_starts.append(Pos(x, 0, 2))
         possible_starts.append(Pos(x, grid.shape[1] - 1, 0))
 
@@ -664,24 +665,20 @@ def aoc16():
             cur = work_stack.pop(0)
 
             # out of borders / already passed -> continue
-            if cur.x < 0 or cur.y < 0 or cur.x >= grid.shape[0] or cur.y >= grid.shape[1] or cur in visited:
+            if cur.x < 0 or cur.y < 0 or cur.x >= max_x or cur.y >= max_y or hash(cur) in visited:
                 continue
-            visited.append(cur)
             passed[cur.x, cur.y] = 1
 
-            if (grid[cur.x, cur.y] not in ['|', '\\', '/', '-'] or
-                    grid[cur.x, cur.y] == '|' and cur.dir in [0, 2] or
+            if (grid[cur.x, cur.y] not in ['|', '\\', '/', '-'] or grid[cur.x, cur.y] == '|' and cur.dir in [0, 2] or
                     grid[cur.x, cur.y] == '-' and cur.dir in [1, 3]):
                 nxt = cur.step()
                 work_stack.append(nxt)
-            elif (grid[cur.x, cur.y] == '|' and cur.dir in [1, 3] or
-                    grid[cur.x, cur.y] == '-' and cur.dir in [0, 2]):
+            elif (grid[cur.x, cur.y] == '|' and cur.dir in [1, 3] or grid[cur.x, cur.y] == '-' and cur.dir in [0, 2]):
                 nxt = cur.cw().step()
                 nxt2 = cur.ccw().step()
                 work_stack.append(nxt)
                 work_stack.append(nxt2)
-            elif (grid[cur.x, cur.y] == '/' and cur.dir in [0, 2] or
-                    grid[cur.x, cur.y] == '\\' and cur.dir in [1, 3]):
+            elif (grid[cur.x, cur.y] == '/' and cur.dir in [0, 2] or grid[cur.x, cur.y] == '\\' and cur.dir in [1, 3]):
                 nxt = cur.cw().step()
                 work_stack.append(nxt)
             else:
