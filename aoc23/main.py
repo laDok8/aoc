@@ -293,6 +293,7 @@ def aoc9():
 class Pos:
     x: int
     y: int
+    dir: int = 0  # 0 - up, 1 - right, 2 - down, 3 - left
 
     def __add__(self, other):
         if isinstance(other, Pos):
@@ -300,13 +301,29 @@ class Pos:
         raise TypeError(f"unsupported operand type(s) for +: 'Pos' and '{type(other).__name__}'")
 
     def __eq__(self, other):
-        return isinstance(other, Pos) and self.x == other.x and self.y == other.y
+        return isinstance(other, Pos) and self.x == other.x and self.y == other.y and self.dir == other.dir
 
     def __hash__(self):
         return hash((self.x, self.y))
 
     def distance(self, other):
         return abs(self.x - other.x) + abs(self.y - other.y)
+
+    # rotation
+    def cw(self):
+        return Pos(self.x, self.y, (self.dir + 1) % 4)
+
+    def ccw(self):
+        return Pos(self.x, self.y, (self.dir - 1) % 4)
+
+    # move
+    def step(self):
+        direction_mapping = {0: lambda: Pos(self.x, self.y - 1, self.dir),
+                             1: lambda: Pos(self.x + 1, self.y, self.dir),
+                             2: lambda: Pos(self.x, self.y + 1, self.dir),
+                             3: lambda: Pos(self.x - 1, self.y, self.dir), }
+
+        return direction_mapping.get(self.dir, lambda: None)()
 
 
 # 4 boundary fill
@@ -397,7 +414,7 @@ def aoc11():
         stars = [Pos(x, y) for x, y in zip(stars[0], stars[1])]
 
         def adjust_coordinates(stars: list[Pos], axis: str, _multi: int):
-            max_coord = max(stars, key=lambda x: getattr(x, axis)).__dict__[axis]
+            max_coord = max(stars, key=lambda x: getattr(x, axis)).__getattribute__(axis)
 
             for i in range(max_coord, 0, -1):
                 if any(getattr(s, axis) == i for s in stars):
@@ -580,7 +597,7 @@ def aoc14():
 
 
 def d15_hash(inp: str) -> int:
-    return reduce(lambda _acc, x: (_acc + ord(x))*17 %256,inp,0)
+    return reduce(lambda _acc, x: (_acc + ord(x)) * 17 % 256, inp, 0)
 
 
 def aoc15():
@@ -618,9 +635,85 @@ def aoc15():
 
     print('part 1:', acc_p1, 'part 1:', acc_p2)
 
+def pretty_print_grid(grid):
+    for y in range(grid.shape[0]):
+        for x in range(grid.shape[1]):
+            print(grid[x, y], end='')
+        print()
+    print()
 
+@print_timing
 def aoc16():
-    pass
+    # switch X and Y for sanity
+    grid = np.array([list(line) for line in scrape()]).T
+    passed = np.zeros(grid.shape, dtype=int)
+    visited = []
+
+    work_stack = [Pos(0, 0, 1)]
+    while work_stack:
+        cur = work_stack.pop(0)
+
+        # out of borders -> continue
+        if cur.x < 0 or cur.y < 0 or cur.x >= grid.shape[0] or cur.y >= grid.shape[1]:
+            continue
+        # already passed -> continue
+        if cur in visited:
+            continue
+        visited.append(cur)
+
+        # pretty_print_grid(passed)
+
+        passed[cur.x, cur.y] = 1
+        if grid[cur.x, cur.y] not in ['|', '\\', '/', '-']:
+            nxt = cur.step()
+            work_stack.append(nxt)
+            continue
+
+        if grid[cur.x, cur.y] == '|':
+            if cur.dir in [0, 2]:
+                nxt = cur.step()
+                work_stack.append(nxt)
+                continue
+            else:
+                nxt = cur.cw().step()
+                nxt2 = cur.ccw().step()
+                work_stack.append(nxt)
+                work_stack.append(nxt2)
+                continue
+        elif grid[cur.x, cur.y] == '-':
+            if cur.dir in [1, 3]:
+                nxt = cur.step()
+                work_stack.append(nxt)
+                continue
+            else:
+                nxt = cur.cw().step()
+                nxt2 = cur.ccw().step()
+                work_stack.append(nxt)
+                work_stack.append(nxt2)
+                continue
+        elif grid[cur.x, cur.y] == '\\':
+            if cur.dir in [1, 3]:
+                nxt = cur.cw().step()
+                work_stack.append(nxt)
+                continue
+            else:
+                nxt = cur.ccw().step()
+                work_stack.append(nxt)
+                continue
+        elif grid[cur.x, cur.y] == '/':
+            if cur.dir in [1, 3]:
+                nxt = cur.ccw().step()
+                work_stack.append(nxt)
+                continue
+            else:
+                nxt = cur.cw().step()
+                work_stack.append(nxt)
+                continue
+        else:
+            print("problem")
+            continue
+
+    print('part 1:', passed.sum())
 
 
 def aoc17():
