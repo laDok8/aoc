@@ -296,12 +296,10 @@ class Pos:
     dir: int = 0  # 0 - up, 1 - right, 2 - down, 3 - left
 
     def __add__(self, other):
-        if isinstance(other, Pos):
-            return Pos(self.x + other.x, self.y + other.y)
-        raise TypeError(f"unsupported operand type(s) for +: 'Pos' and '{type(other).__name__}'")
+        return Pos(self.x + other.x, self.y + other.y)
 
     def __eq__(self, other):
-        return isinstance(other, Pos) and self.x == other.x and self.y == other.y and self.dir == other.dir
+        return self.x == other.x and self.y == other.y and self.dir == other.dir
 
     def __hash__(self):
         return hash((self.x, self.y))
@@ -635,7 +633,7 @@ def aoc15():
 
     print('part 1:', acc_p1, 'part 1:', acc_p2)
 
-def pretty_print_grid(grid):
+def _pretty_print_grid(grid):
     for y in range(grid.shape[0]):
         for x in range(grid.shape[1]):
             print(grid[x, y], end='')
@@ -644,76 +642,53 @@ def pretty_print_grid(grid):
 
 @print_timing
 def aoc16():
+    # veryyy slow
     # switch X and Y for sanity
     grid = np.array([list(line) for line in scrape()]).T
-    passed = np.zeros(grid.shape, dtype=int)
-    visited = []
 
-    work_stack = [Pos(0, 0, 1)]
-    while work_stack:
-        cur = work_stack.pop(0)
+    possible_starts = []
+    for y in range(grid.shape[1]):
+        possible_starts.append(Pos(0, y, 1))
+        possible_starts.append(Pos(grid.shape[0] - 1, y, 3))
+    for x in range(grid.shape[0]):
+        possible_starts.append(Pos(x, 0, 2))
+        possible_starts.append(Pos(x, grid.shape[1] - 1, 0))
 
-        # out of borders -> continue
-        if cur.x < 0 or cur.y < 0 or cur.x >= grid.shape[0] or cur.y >= grid.shape[1]:
-            continue
-        # already passed -> continue
-        if cur in visited:
-            continue
-        visited.append(cur)
+    accs = []
+    for start in possible_starts:
+        passed = np.zeros(grid.shape, dtype=int)
+        visited = []
 
-        # pretty_print_grid(passed)
+        work_stack = [start]
+        while work_stack:
+            cur = work_stack.pop(0)
 
-        passed[cur.x, cur.y] = 1
-        if grid[cur.x, cur.y] not in ['|', '\\', '/', '-']:
-            nxt = cur.step()
-            work_stack.append(nxt)
-            continue
+            # out of borders / already passed -> continue
+            if cur.x < 0 or cur.y < 0 or cur.x >= grid.shape[0] or cur.y >= grid.shape[1] or cur in visited:
+                continue
+            visited.append(cur)
+            passed[cur.x, cur.y] = 1
 
-        if grid[cur.x, cur.y] == '|':
-            if cur.dir in [0, 2]:
+            if (grid[cur.x, cur.y] not in ['|', '\\', '/', '-'] or
+                    grid[cur.x, cur.y] == '|' and cur.dir in [0, 2] or
+                    grid[cur.x, cur.y] == '-' and cur.dir in [1, 3]):
                 nxt = cur.step()
                 work_stack.append(nxt)
-                continue
-            else:
+            elif (grid[cur.x, cur.y] == '|' and cur.dir in [1, 3] or
+                    grid[cur.x, cur.y] == '-' and cur.dir in [0, 2]):
                 nxt = cur.cw().step()
                 nxt2 = cur.ccw().step()
                 work_stack.append(nxt)
                 work_stack.append(nxt2)
-                continue
-        elif grid[cur.x, cur.y] == '-':
-            if cur.dir in [1, 3]:
-                nxt = cur.step()
-                work_stack.append(nxt)
-                continue
-            else:
-                nxt = cur.cw().step()
-                nxt2 = cur.ccw().step()
-                work_stack.append(nxt)
-                work_stack.append(nxt2)
-                continue
-        elif grid[cur.x, cur.y] == '\\':
-            if cur.dir in [1, 3]:
+            elif (grid[cur.x, cur.y] == '/' and cur.dir in [0, 2] or
+                    grid[cur.x, cur.y] == '\\' and cur.dir in [1, 3]):
                 nxt = cur.cw().step()
                 work_stack.append(nxt)
-                continue
             else:
                 nxt = cur.ccw().step()
                 work_stack.append(nxt)
-                continue
-        elif grid[cur.x, cur.y] == '/':
-            if cur.dir in [1, 3]:
-                nxt = cur.ccw().step()
-                work_stack.append(nxt)
-                continue
-            else:
-                nxt = cur.cw().step()
-                work_stack.append(nxt)
-                continue
-        else:
-            print("problem")
-            continue
-
-    print('part 1:', passed.sum())
+        accs.append(passed.sum())
+    print('part 1:', accs[0], '\npart 2:', max(accs))
 
 
 def aoc17():
