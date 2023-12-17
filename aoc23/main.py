@@ -8,6 +8,7 @@ import time
 from collections import namedtuple
 from dataclasses import dataclass
 from functools import reduce, cache
+from heapq import heappush, heappop
 from itertools import dropwhile, takewhile
 
 import numpy as np
@@ -296,7 +297,10 @@ class Pos:
     dir: int = 0  # 0 - up, 1 - right, 2 - down, 3 - left
 
     def __add__(self, other):
-        return Pos(self.x + other.x, self.y + other.y)
+        return Pos(self.x + other.x, self.y + other.y, self.dir)
+
+    def __mul__(self, other):
+        return Pos(self.x * other, self.y * other, self.dir)
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y and self.dir == other.dir
@@ -688,8 +692,42 @@ def aoc16():
     print('part 1:', accs[0], '\npart 2:', max(accs))
 
 
+def astar(maze: list[list[int]], low_straight: int = 0, high_straight: int = 3) -> int:
+    """Returns min heat loss path from start to end in maze"""
+    directions = {(0, -1), (1, 0), (0, 1), (-1, 0)}
+    pq = [(0, 0, 0, 0, 0, 0)]
+    seen = set()
+
+    while pq:
+        g, x, y, dx, dy, walked = heappop(pq)
+        if (x, y, dx, dy, walked) in seen:
+            continue
+        seen.add((x, y, dx, dy, walked))
+
+        if x == len(maze) - 1 and y == len(maze[0]) - 1 and walked > low_straight:
+            return g
+
+        for ndf in directions:
+            # block long straights and 180 degree turns
+            if walked >= high_straight and ndf == (dx, dy) or ndf == (-dx, -dy):
+                continue
+            # block short straights
+            if ndf != (dx, dy) and walked <= low_straight and (dx, dy) != (0, 0):
+                continue
+
+            new_pos = (x + ndf[0], y + ndf[1])
+            if not (0 <= new_pos[0] < len(maze) and 0 <= new_pos[1] < len(maze[0])):
+                continue
+            _walked = walked + 1 if ndf == (dx, dy) else 1
+            heappush(pq, (g + maze[new_pos[0]][new_pos[1]], new_pos[0], new_pos[1], ndf[0], ndf[1], _walked))
+    return 0
+
+
 def aoc17():
-    pass
+    # switch X and Y for sanity
+    grid = np.array([list(line) for line in scrape()], dtype=int).T
+
+    print("part 1:", astar(grid, 0, 3), "\npart 2:", astar(grid, 3, 10))
 
 
 def aoc18():
