@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import datetime
 import inspect
+import json
 import math
 import os
 import re
@@ -762,7 +763,54 @@ def aoc18():
 
 
 def aoc19():
-    pass
+
+    flows, inp = scrape(separator='\n\n')
+    flow_dict = {}
+
+    # long parsing
+    # name, list of commands -> letter, lambda, letter
+    # px{a<2006:qkq,m>2090:A,rfg} -> px, [a<2006:qkq,m>2090:A,rfg]
+    for f in flows.split('\n'):
+        name, cmds = f[:-1].split('{')
+        cmds = cmds.split(',')
+        conds = []
+        for cmd in cmds:
+            cmd = cmd.split(':')
+            if len(cmd) == 1:
+                conds.append((cmd[0], 'x', lambda x: True))
+                continue
+            nm, cmd = cmd[1], cmd[0]
+            op = '>' if '>' in cmd else '<'
+            letter, val = cmd.split(op)
+            val = int(val)
+            conds.append((nm, letter, lambda x, _op=op, _val=val: x > _val if _op == '>' else x < _val))
+        flow_dict[name] = conds
+
+    # parse input to json
+    all_vals = []
+    for line in inp.split('\n'):
+        line = line.replace('=',':')
+        # get value groups using regex
+        groups = [int(g) for g in re.findall(r'(\d+)', line)]
+        my_json = {}
+        for g,l in zip(groups, list('xmas')):
+            my_json[l] = g
+        all_vals.append(my_json)
+
+    # apply flow
+    acc_p1 = 0
+    for val in all_vals:
+        cur_state = 'in'
+        #print(val)
+        while cur_state not in ['R','A']:
+            for cond in flow_dict[cur_state]:
+                if cond[2](val[cond[1]]):
+                    cur_state = cond[0]
+                    break
+        if cur_state == 'A':
+            acc_p1 += sum(val.values())
+    print("part 1:", acc_p1)
+
 
 
 def aoc20():
@@ -790,5 +838,4 @@ if __name__ == '__main__':
     today = datetime.date.today().day
     aocs = [aoc1, aoc2, aoc3, aoc4, aoc5, aoc6, aoc7, aoc8, aoc9, aoc10, aoc11, aoc12, aoc13, aoc14, aoc15, aoc16,
             aoc17, aoc18, aoc19, aoc20, aoc21, aoc22, aoc23, aoc24]
-    today = 18
     aocs[today - 1]()
