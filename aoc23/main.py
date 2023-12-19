@@ -730,8 +730,36 @@ def aoc17():
     print("part 1:", astar(grid, 0, 3), "\npart 2:", astar(grid, 3, 10))
 
 
+def shoelace_area(points: list[tuple[int, int]]) -> int:
+    acc = 0
+    for i in range(len(points) - 1):
+        acc += points[i][0] * points[i + 1][1] - points[i + 1][0] * points[i][1]
+    return abs(acc) // 2
+
+
+@print_timing
 def aoc18():
-    pass
+    directions = {'R': (1, 0), 'D': (0, 1), 'L': (-1, 0), 'U': (0, -1)}
+    cur_point, boundary_points, inp = (0, 0), 0, scrape()
+    points = [cur_point]
+
+    for _dir, num, _ in [i.split() for i in inp]:
+        boundary_points += int(num)
+        cur_point = (cur_point[0] + directions[_dir][0] * int(num), cur_point[1] + directions[_dir][1] * int(num))
+        points.append(cur_point)
+    # picks theorem
+    print("part 1:", shoelace_area(points) + boundary_points // 2 + 1)
+
+    cur_point, boundary_points = (0, 0), 0
+    points, dir_vals = [cur_point], list(directions.values())
+    for _, _, paint in [i.split() for i in inp]:
+        num = int(paint[2:-2], 16)
+        dir_int = int(paint[-2])
+
+        boundary_points += int(num)
+        cur_point = cur_point[0] + dir_vals[dir_int][0] * int(num), cur_point[1] + dir_vals[dir_int][1] * int(num)
+        points.append(cur_point)
+    print("part 2:", shoelace_area(points) + boundary_points // 2 + 1)
 
 
 def aoc19():
@@ -763,4 +791,5 @@ if __name__ == '__main__':
     today = datetime.date.today().day
     aocs = [aoc1, aoc2, aoc3, aoc4, aoc5, aoc6, aoc7, aoc8, aoc9, aoc10, aoc11, aoc12, aoc13, aoc14, aoc15, aoc16,
             aoc17, aoc18, aoc19, aoc20, aoc21, aoc22, aoc23, aoc24]
+    today = 18
     aocs[today - 1]()
