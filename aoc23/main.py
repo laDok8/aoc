@@ -740,26 +740,25 @@ def shoelace_area(points: list[tuple[int, int]]) -> int:
 @print_timing
 def aoc18():
     directions = {'R': (1, 0), 'D': (0, 1), 'L': (-1, 0), 'U': (0, -1)}
-    cur_point, boundary_points, inp = (0, 0), 0, scrape()
-    points = [cur_point]
+    cur_p1, cur_p2, bound_p1, bound_p2, inp = (0, 0), (0, 0), 0, 0, scrape()
+    points_p1, points_p2 = [cur_p1], [cur_p2]
+    dir_vals = list(directions.values())
 
-    for _dir, num, _ in [i.split() for i in inp]:
-        boundary_points += int(num)
-        cur_point = (cur_point[0] + directions[_dir][0] * int(num), cur_point[1] + directions[_dir][1] * int(num))
-        points.append(cur_point)
-    # picks theorem
-    print("part 1:", shoelace_area(points) + boundary_points // 2 + 1)
+    for _dir, num, paint in [i.split() for i in inp]:
+        bound_p1 += int(num)
+        cur_p1 = (cur_p1[0] + directions[_dir][0] * int(num), cur_p1[1] + directions[_dir][1] * int(num))
+        points_p1.append(cur_p1)
 
-    cur_point, boundary_points = (0, 0), 0
-    points, dir_vals = [cur_point], list(directions.values())
-    for _, _, paint in [i.split() for i in inp]:
-        num = int(paint[2:-2], 16)
+        # part 2
+        num2 = int(paint[2:-2], 16)
         dir_int = int(paint[-2])
+        bound_p2 += int(num2)
+        cur_p2 = cur_p2[0] + dir_vals[dir_int][0] * int(num2), cur_p2[1] + dir_vals[dir_int][1] * int(num2)
+        points_p2.append(cur_p2)
 
-        boundary_points += int(num)
-        cur_point = cur_point[0] + dir_vals[dir_int][0] * int(num), cur_point[1] + dir_vals[dir_int][1] * int(num)
-        points.append(cur_point)
-    print("part 2:", shoelace_area(points) + boundary_points // 2 + 1)
+    # picks theorem
+    print("part 1:", shoelace_area(points_p1) + bound_p1 // 2 + 1)
+    print("part 2:", shoelace_area(points_p2) + bound_p2 // 2 + 1)
 
 
 def aoc19():
