@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 import datetime
 import inspect
-import json
 import math
 import os
 import re
@@ -761,55 +760,60 @@ def aoc18():
     print("part 1:", shoelace_area(points_p1) + bound_p1 // 2 + 1)
     print("part 2:", shoelace_area(points_p2) + bound_p2 // 2 + 1)
 
-def solve_flow(st: str, interval: tuple, flow_dict, cur_flow) -> int:
-    if st == 'R':
-        return 0
-    if st == 'A':
-        #change to intrval len
-        prod_acc = 1
-        for i in range(4):
-            prod_acc *= (interval[i*2+1]-interval[i*2]+1)
-        return prod_acc
 
-    _cur_flow = cur_flow[0]
-    acc = 0
-    nm, letter, op, val = _cur_flow
-    indice_f = "xmas".index(letter)*2
-    indice_s = indice_f+1
+def solve_flow(interval: tuple, flow_dict: dict, cur_flow: list) -> int:
+    nm, letter, op, val = cur_flow[0]
+    indice_l = "xmas".index(letter) * 2
     _new_prob = list(interval)
     _rest_prob = list(interval)
     if op == '>':
-        # s>1351
-        _new_prob[indice_f] = max(_new_prob[indice_f],val+1)
-        _rest_prob[indice_s] = _new_prob[indice_f] - 1
+        _new_prob[indice_l] = max(_new_prob[indice_l], val + 1)
+        _rest_prob[indice_l + 1] = _new_prob[indice_l] - 1
     else:
-        # s<1351  0-1350 a 1351-4k
-        _new_prob[indice_s] = min(_new_prob[indice_s], val-1)
-        _rest_prob[indice_f] = _new_prob[indice_s] + 1
+        _new_prob[indice_l + 1] = min(_new_prob[indice_l + 1], val - 1)
+        _rest_prob[indice_l] = _new_prob[indice_l + 1] + 1
     new_prob = tuple(_new_prob)
     rest_prob = tuple(_rest_prob)
 
-    #print(new_prob)
-    acc = solve_flow(nm, new_prob, flow_dict, flow_dict[nm])
-    if len(cur_flow) > 1:
-        acc += solve_flow(st,rest_prob, flow_dict, cur_flow[1:])
+    if nm == 'R':
+        acc = 0
+    elif nm == 'A':
+        acc = math.prod(new_prob[i * 2 + 1] - new_prob[i * 2] + 1 for i in range(4)) if new_prob[indice_l] <= new_prob[
+            indice_l + 1] else 0
     else:
-        #print("DO I CARE")
-        #print(rest_prob)
-        pass
+        acc = solve_flow(new_prob, flow_dict, flow_dict[nm]) if new_prob[indice_l] <= new_prob[indice_l + 1] else 0
+
+    acc += solve_flow(rest_prob, flow_dict, cur_flow[1:]) if len(cur_flow) > 1 and rest_prob[indice_l] <= rest_prob[
+        indice_l + 1] else 0
     return acc
 
 
+def solve_flow_p1(all_vals: list[tuple], flow_dict: dict) -> int:
+    acc_p1 = 0
+    for cur_val in all_vals:
+        cur_state = 'in'
+        while cur_state not in ['R', 'A']:
+            for cond in flow_dict[cur_state]:
+                nm, letter, op, val = cond
+                if op == '>':
+                    if cur_val["xmas".index(letter)] > val:
+                        cur_state = nm
+                        break
+                else:
+                    if cur_val["xmas".index(letter)] < val:
+                        cur_state = nm
+                        break
 
-
-
+        if cur_state == 'A':
+            acc_p1 += sum(list(cur_val))
+    return acc_p1
 
 
 def aoc19():
     flows, inp = scrape(separator='\n\n')
-    flow_dict = {'A': 'foo','R':'foo'}
-    for f in flows.split('\n'):
-        name, cmds = f[:-1].split('{')
+    flow_dict = {'A': 'foo', 'R': 'foo'}
+    for line in flows.split('\n'):
+        name, cmds = line[:-1].split('{')
         cmds = cmds.split(',')
         conds = []
         for cmd in cmds:
@@ -823,8 +827,15 @@ def aoc19():
             conds.append((nm, letter, op, int(val)))
         flow_dict[name] = conds
 
-    # state minX maxX minM maxM .... 8-tuple both intervals closed
-    print("part 2:",solve_flow('in', (1,4000,1,4000,1,4000,1,4000), flow_dict, flow_dict['in']))
+    # parse input to json
+    all_vals = []
+    for line in inp.split('\n'):
+        groups = [int(g) for g in re.findall(r'(\d+)', line)]
+        all_vals.append(tuple(g for g in groups))
+
+    print("part 1:", solve_flow_p1(all_vals, flow_dict))
+    print("part 2:", solve_flow((1, 4000, 1, 4000, 1, 4000, 1, 4000), flow_dict, flow_dict['in']))
+
 
 def aoc20():
     pass
