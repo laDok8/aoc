@@ -677,12 +677,12 @@ def aoc16():
                     grid[cur.x, cur.y] == '-' and cur.dir in [1, 3]):
                 nxt = cur.step()
                 work_stack.append(nxt)
-            elif (grid[cur.x, cur.y] == '|' and cur.dir in [1, 3] or grid[cur.x, cur.y] == '-' and cur.dir in [0, 2]):
+            elif grid[cur.x, cur.y] == '|' and cur.dir in [1, 3] or grid[cur.x, cur.y] == '-' and cur.dir in [0, 2]:
                 nxt = cur.cw().step()
                 nxt2 = cur.ccw().step()
                 work_stack.append(nxt)
                 work_stack.append(nxt2)
-            elif (grid[cur.x, cur.y] == '/' and cur.dir in [0, 2] or grid[cur.x, cur.y] == '\\' and cur.dir in [1, 3]):
+            elif grid[cur.x, cur.y] == '/' and cur.dir in [0, 2] or grid[cur.x, cur.y] == '\\' and cur.dir in [1, 3]:
                 nxt = cur.cw().step()
                 work_stack.append(nxt)
             else:
@@ -764,27 +764,23 @@ def aoc18():
 def solve_flow(interval: tuple, flow_dict: dict, cur_flow: list) -> int:
     nm, letter, op, val = cur_flow[0]
     indice_l = "xmas".index(letter) * 2
-    _new_prob = list(interval)
-    _rest_prob = list(interval)
+    _new_prob, _rest_prob = list(interval), list(interval)
     if op == '>':
         _new_prob[indice_l] = max(_new_prob[indice_l], val + 1)
         _rest_prob[indice_l + 1] = _new_prob[indice_l] - 1
     else:
         _new_prob[indice_l + 1] = min(_new_prob[indice_l + 1], val - 1)
         _rest_prob[indice_l] = _new_prob[indice_l + 1] + 1
-    new_prob = tuple(_new_prob)
-    rest_prob = tuple(_rest_prob)
+    new_prob, rest_prob = tuple(_new_prob), tuple(_rest_prob)
 
     if nm == 'R':
         acc = 0
     elif nm == 'A':
-        acc = math.prod(new_prob[i * 2 + 1] - new_prob[i * 2] + 1 for i in range(4)) if new_prob[indice_l] <= new_prob[
-            indice_l + 1] else 0
+        acc = math.prod(new_prob[i * 2 + 1] - new_prob[i * 2] + 1 for i in range(4))
     else:
-        acc = solve_flow(new_prob, flow_dict, flow_dict[nm]) if new_prob[indice_l] <= new_prob[indice_l + 1] else 0
+        acc = solve_flow(new_prob, flow_dict, flow_dict[nm])
 
-    acc += solve_flow(rest_prob, flow_dict, cur_flow[1:]) if len(cur_flow) > 1 and rest_prob[indice_l] <= rest_prob[
-        indice_l + 1] else 0
+    acc += solve_flow(rest_prob, flow_dict, cur_flow[1:]) if len(cur_flow) > 1 else 0
     return acc
 
 
@@ -838,7 +834,89 @@ def aoc19():
 
 
 def aoc20():
-    pass
+    # module: name<->type, output and separate (default) state
+    modules = {}
+    modules_state = {}  # High = True, Low = False
+    button_press = ('broadcaster', False, 'button')
+    for line in scrape():
+        nm, out = line.split('->')
+        typ, nm = nm.strip()[0], nm.strip()[1:]
+        assert typ in ['%', '&', 'b']
+        assert (nm if typ != 'b' else typ + nm) not in modules
+        modules[nm if typ != 'b' else typ + nm] = (typ, [o.strip() for o in out.strip().split(',')])
+        if typ == '%':
+            modules_state[nm] = False
+
+    # make default connections to conjunct
+    for nm, (typ, outputs) in modules.items():
+        for o in outputs:
+            if o not in modules:
+                continue
+            t, _ = modules[o]
+            if t == '&':
+                modules_state[o] = {nm: False}
+
+    # presses, iter
+    low_p, hi_p, press = 0, 0, 1
+    state_cche = {}
+    limit = int(1e3)
+    while press <= limit:
+        message_q = [button_press]
+        low_p += 1
+        while len(message_q) != 0:
+            mdl_nm, msg, sender = message_q.pop(0)
+            if mdl_nm not in modules:
+                continue
+
+            if mdl_nm == 'broadcaster':
+                for rcvs in modules[mdl_nm][1]:
+                    message_q.append((rcvs, False, mdl_nm))
+                low_p += len(modules[mdl_nm][1])
+                continue
+            typ, outputs = modules[mdl_nm]
+
+            state = modules_state[mdl_nm]
+            if typ == '%':
+                if msg:
+                    continue
+                _st = not state
+                modules_state[mdl_nm] = _st
+                for rcvs in outputs:
+                    message_q.append((rcvs, _st, mdl_nm))
+
+                if _st:
+                    hi_p += len(outputs)
+                else:
+                    low_p += len(outputs)
+            elif typ == '&':
+                # update
+                state[sender] = msg
+                _msg = not all(state.values())
+
+                for rcvs in outputs:
+                    message_q.append((rcvs, _msg, mdl_nm))
+                if _msg:
+                    hi_p += len(outputs)
+                else:
+                    low_p += len(outputs)
+            else:
+                pass
+
+        if press % 500 == 0:
+            print("DONE PRESS", press)
+        hsh = hash(str(modules_state))
+        if hsh in state_cche:
+            print("FOUND LOOP len", press-1, "presses")
+            hi_p = (hi_p - state_cche[hsh][1]) * (limit // (press-1))
+            low_p = (low_p - state_cche[hsh][0]) * (limit // (press-1))
+            break
+
+        state_cche[hash(str(modules_state))] = (low_p, hi_p, press)
+        press += 1
+
+    print("part 1: 16620 47356 CORRECT")
+    print("part 1:", low_p, hi_p, "MY")
+    print("part 1:", low_p * hi_p)
 
 
 def aoc21():
