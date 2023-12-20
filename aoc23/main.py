@@ -854,7 +854,9 @@ def aoc20():
                 continue
             t, _ = modules[o]
             if t == '&':
-                modules_state[o] = {nm: False}
+                if o not in modules_state:
+                    modules_state[o] = {}
+                modules_state[o][nm] = False
 
     # presses, iter
     low_p, hi_p, press = 0, 0, 1
@@ -883,7 +885,6 @@ def aoc20():
                 modules_state[mdl_nm] = _st
                 for rcvs in outputs:
                     message_q.append((rcvs, _st, mdl_nm))
-
                 if _st:
                     hi_p += len(outputs)
                 else:
@@ -913,9 +914,6 @@ def aoc20():
 
         state_cche[hash(str(modules_state))] = (low_p, hi_p, press)
         press += 1
-
-    print("part 1: 16620 47356 CORRECT")
-    print("part 1:", low_p, hi_p, "MY")
     print("part 1:", low_p * hi_p)
 
 
