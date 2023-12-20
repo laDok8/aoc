@@ -860,9 +860,7 @@ def aoc20():
 
     # presses, iter
     low_p, hi_p, press = 0, 0, 1
-    state_cche = {}
-    limit = int(1e3)
-    while press <= limit:
+    while press <= int(1e3):
         message_q = [button_press]
         low_p += 1
         while len(message_q) != 0:
@@ -902,19 +900,49 @@ def aoc20():
                     low_p += len(outputs)
             else:
                 pass
-
-        if press % 500 == 0:
-            print("DONE PRESS", press)
-        hsh = hash(str(modules_state))
-        if hsh in state_cche:
-            print("FOUND LOOP len", press-1, "presses")
-            hi_p = (hi_p - state_cche[hsh][1]) * (limit // (press-1))
-            low_p = (low_p - state_cche[hsh][0]) * (limit // (press-1))
-            break
-
-        state_cche[hash(str(modules_state))] = (low_p, hi_p, press)
         press += 1
     print("part 1:", low_p * hi_p)
+
+    cycle_len = []
+    for ot in modules['broadcaster'][1]:
+        press = 1
+        state_cche = {}
+        while True:
+            message_q = [(ot, False, 'broadcaster')]
+            low_p += 1
+            while len(message_q) != 0:
+                mdl_nm, msg, sender = message_q.pop(0)
+                if mdl_nm not in modules:
+                    continue
+
+                typ, outputs = modules[mdl_nm]
+
+                state = modules_state[mdl_nm]
+                if typ == '%':
+                    if msg:
+                        continue
+                    _st = not state
+                    modules_state[mdl_nm] = _st
+                    for rcvs in outputs:
+                        message_q.append((rcvs, _st, mdl_nm))
+
+                elif typ == '&':
+                    # update
+                    state[sender] = msg
+                    _msg = not all(state.values())
+
+                    for rcvs in outputs:
+                        message_q.append((rcvs, _msg, mdl_nm))
+                else:
+                    pass
+
+            hsh = hash(str(modules_state))
+            if hsh in state_cche:
+                cycle_len.append(press - 1)
+                break
+            state_cche[hash(str(modules_state))] = (low_p, hi_p, press)
+            press += 1
+    print("part 2:", math.lcm(*cycle_len))
 
 
 def aoc21():
