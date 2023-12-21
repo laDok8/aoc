@@ -945,8 +945,50 @@ def aoc20():
     print("part 2:", math.lcm(*cycle_len))
 
 
+def my_d21_cache(func):
+    """cache BFS results"""
+    cche = {}
+    def wrapper(grid: np.ndarray, cur_pos: tuple, steps: int):
+
+        #hash of cur_pos and steps
+        arg = hash((cur_pos, steps))
+        if arg in cche:
+            return cche[arg]
+        result = func(grid, cur_pos, steps)
+        cche[arg] = result
+        #print('cache hit', cur_pos)
+        return result
+
+    return wrapper
+
+
+@my_d21_cache
+def dfs_d21(grid: np.ndarray, cur_pos: tuple, steps: int) -> list[tuple]:
+    if steps == 0:
+        return []
+    directions = {(0, -1), (1, 0), (0, 1), (-1, 0)}
+    reachable = []
+    for ndf in directions:
+        new_pos = (cur_pos[0] + ndf[0], cur_pos[1] + ndf[1])
+        if not (0 <= new_pos[0] < grid.shape[0] and 0 <= new_pos[1] < grid.shape[1]):
+            continue
+        if grid[new_pos[0], new_pos[1]] == '#':
+            continue
+        if steps == 1:
+            reachable.append(new_pos)
+        elif steps > 1:
+            reachable += dfs_d21(grid, new_pos, steps - 1)
+    # get unique reachable
+    return list(set(reachable))
+
+
+@print_timing
 def aoc21():
-    pass
+    grid = np.array([list(line) for line in scrape()], dtype=str).T
+    start = np.where(grid == 'S')
+    start = (start[0][0], start[1][0])
+    reachable = dfs_d21(grid, start, 64)
+    print("part 1:", len(reachable))
 
 
 def aoc22():
