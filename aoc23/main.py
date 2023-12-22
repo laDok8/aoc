@@ -3,6 +3,7 @@ import datetime
 import inspect
 import math
 import os
+from line_profiler_pycharm import profile
 import re
 import time
 from collections import namedtuple
@@ -948,15 +949,15 @@ def aoc20():
 def my_d21_cache(func):
     """cache BFS results"""
     cche = {}
-    def wrapper(grid: np.ndarray, cur_pos: tuple, steps: int):
 
-        #hash of cur_pos and steps
+    def wrapper(grid: np.ndarray, cur_pos: tuple, steps: int):
+        # hash of cur_pos and steps
         arg = hash((cur_pos, steps))
         if arg in cche:
             return cche[arg]
         result = func(grid, cur_pos, steps)
         cche[arg] = result
-        #print('cache hit', cur_pos)
+        # print('cache hit', cur_pos)
         return result
 
     return wrapper
@@ -991,8 +992,122 @@ def aoc21():
     print("part 1:", len(reachable))
 
 
+
+class Brick_sparse:
+    """to optimize lookup time store dicts based on ez"""
+    bricks = {}
+    def add(self, brick):
+        self.bricks[brick.ez] = self.bricks.get(brick.ez, []) + [brick]
+
+    def get(self, z):
+        return self.bricks.get(z, [])
+
+    def remove(self, brick):
+        self.bricks[brick.ez].remove(brick)
+        if len(self.bricks[brick.ez]) == 0:
+            del self.bricks[brick.ez]
+
+
+
+
+@dataclass(slots=True, unsafe_hash=True)
+class Brick:
+    _id: int
+    x: int
+    y: int
+    z: int
+    ex: int  # end cord instead of widths
+    ey: int
+    ez: int
+
+    def is_supported_by(self, other) -> bool:
+        return self.z - 1 == other.ez and (other.x <= self.x <= other.ex or self.x <= other.x <= self.ex) and (
+                    other.y <= self.y <= other.ey or self.y <= other.y <= self.ey)
+
+
+
+def pretty_print(bricks: list[Brick], project: str = 'x'):
+    # print as projected stack
+    max_z = max(bricks, key=lambda x: x.z).z
+    if project == 'x':
+        max_x = max(bricks, key=lambda x: x.x).x
+    else:
+        max_x = max(bricks, key=lambda x: x.y).y
+
+    for z in range(max_z + 1, 0, -1):
+        for y in range(max_x + 1):
+            if project == 'x':
+                # get brick ID to print at this position
+                _brick = '.'
+                for b in bricks:
+                    if b.x <= y <= b.ex and b.z <= z <= b.ez:
+                        _brick = b._id
+                        break
+                print(_brick, end='')
+            else:
+                _brick = '.'
+                for b in bricks:
+                    if b.y <= y <= b.ey and b.z <= z <= b.ez:
+                        _brick = b._id
+                        break
+                print(_brick, end='')
+        print(f' {z}')
+
+@profile
+def sift(bricks: list[Brick]) -> list[Brick]:
+    supports = {b._id: set() for b in bricks}
+    is_supported_count = {b._id: 0 for b in bricks}
+    unsifted = set(bricks)
+    sifted = []
+    max_z = max(bricks, key=lambda x: x.z).z
+    for z in range(0, max_z + 1):
+        print(f'z={z}')
+        level_bricks = [b for b in unsifted if b.z == z]
+        # ground
+        if z == 1:
+            sifted.extend(level_bricks)
+            unsifted -= set(level_bricks)
+            continue
+        # try to sift
+        for br in level_bricks:
+            unsifted.remove(br)
+            under = [b for b in sifted if b.ez == br.z - 1]
+            while not any(br.is_supported_by(s) for s in under):
+                br.z -= 1
+                br.ez -= 1
+                under = [b for b in sifted if b.ez == br.z - 1]
+            for i in under:
+                if br.is_supported_by(i):
+                    supports[i._id].add(br._id)
+                    is_supported_count[br._id] += 1
+
+            sifted.append(br)
+
+    return sifted, supports, is_supported_count
+
+
+@print_timing
 def aoc22():
-    pass
+    inp = scrape(separator='\n')
+    cords = [[[int(x) for x in r.split(',')] for r in i.split('~')] for i in inp]
+    bricks, _id = [], 0
+    for c in cords:
+        bricks.append(Brick(_id, c[0][0], c[0][1], c[0][2], c[1][0], c[1][1], c[1][2]))
+        _id += 1
+
+    assert all(b.z <= b.ez for b in bricks)
+
+    # pretty_print(bricks, 'x')
+    # print('\n\n')
+    # pretty_print(bricks, 'y')
+    bricks, supports, is_supported_count = sift(bricks)
+
+    can_be_removed = 0
+    for b in bricks:
+        supporting = supports[b._id]
+        if all(is_supported_count[s] > 1 for s in supporting):
+            can_be_removed += 1
+    print("part 1:", can_be_removed)
 
 
 def aoc23():
