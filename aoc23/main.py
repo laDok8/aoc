@@ -996,16 +996,19 @@ def aoc21():
 class Brick_sparse:
     """to optimize lookup time store dicts based on ez"""
     bricks = {}
+    bricks_end = {}
     def add(self, brick):
-        self.bricks[brick.ez] = self.bricks.get(brick.ez, []) + [brick]
+        self.bricks[brick.z] = self.bricks.get(brick.z, []) + [brick]
+        self.bricks_end[brick.ez] = self.bricks_end.get(brick.ez, []) + [brick]
 
-    def get(self, z):
+    def get_start(self, z):
         return self.bricks.get(z, [])
+    def get_end(self, z):
+        return self.bricks_end.get(z, [])
 
     def remove(self, brick):
-        self.bricks[brick.ez].remove(brick)
-        if len(self.bricks[brick.ez]) == 0:
-            del self.bricks[brick.ez]
+        self.bricks[brick.z].remove(brick)
+        self.bricks_end[brick.ez].remove(brick)
 
 
 
@@ -1054,60 +1057,61 @@ def pretty_print(bricks: list[Brick], project: str = 'x'):
         print(f' {z}')
 
 @profile
-def sift(bricks: list[Brick]) -> list[Brick]:
-    supports = {b._id: set() for b in bricks}
-    is_supported_count = {b._id: 0 for b in bricks}
-    unsifted = set(bricks)
-    sifted = []
-    max_z = max(bricks, key=lambda x: x.z).z
+def sift(brick_storage: Brick_sparse):
+    supports = {b._id: set() for all_brick_list in brick_storage.bricks.values() for b in all_brick_list}
+    is_supported_count = {b._id: 0 for all_brick_list in brick_storage.bricks.values() for b in all_brick_list}
+    max_z = max(brick_storage.bricks.keys())
     for z in range(0, max_z + 1):
         print(f'z={z}')
-        level_bricks = [b for b in unsifted if b.z == z]
+        level_bricks = brick_storage.get_start(z)
         # ground
         if z == 1:
-            sifted.extend(level_bricks)
-            unsifted -= set(level_bricks)
             continue
         # try to sift
         for br in level_bricks:
-            unsifted.remove(br)
-            under = [b for b in sifted if b.ez == br.z - 1]
+            brick_storage.remove(br)
+            under = brick_storage.get_end(br.z - 1)
             while not any(br.is_supported_by(s) for s in under):
+                print(len(under), br.z)
                 br.z -= 1
                 br.ez -= 1
-                under = [b for b in sifted if b.ez == br.z - 1]
+                if br.z == 0:
+                    break
+                under = brick_storage.get_end(br.z - 1)
+            brick_storage.add(br)
             for i in under:
                 if br.is_supported_by(i):
                     supports[i._id].add(br._id)
                     is_supported_count[br._id] += 1
 
-            sifted.append(br)
-
-    return sifted, supports, is_supported_count
+    return supports, is_supported_count
 
 
 @print_timing
 def aoc22():
     inp = scrape(separator='\n')
     cords = [[[int(x) for x in r.split(',')] for r in i.split('~')] for i in inp]
-    bricks, _id = [], 0
+    _id = 0
+    brick_storage = Brick_sparse()
     for c in cords:
-        bricks.append(Brick(_id, c[0][0], c[0][1], c[0][2], c[1][0], c[1][1], c[1][2]))
+        #bricks.append(Brick(_id, c[0][0], c[0][1], c[0][2], c[1][0], c[1][1], c[1][2]))
+        brick_storage.add(Brick(_id, c[0][0], c[0][1], c[0][2], c[1][0], c[1][1], c[1][2]))
         _id += 1
 
-    assert all(b.z <= b.ez for b in bricks)
+    assert all(b.z <= b.ez for all_brick_list in brick_storage.bricks.values() for b in all_brick_list)
 
     # pretty_print(bricks, 'x')
     # print('\n\n')
     # pretty_print(bricks, 'y')
-    bricks, supports, is_supported_count = sift(bricks)
+    supports, is_supported_count = sift(brick_storage)
 
     can_be_removed = 0
-    for b in bricks:
+    for b in (brick for all_brick_list in brick_storage.bricks.values() for brick in all_brick_list):
         supporting = supports[b._id]
         if all(is_supported_count[s] > 1 for s in supporting):
             can_be_removed += 1
     print("part 1:", can_be_removed)
+    # 693 incorrect
 
 
 def aoc23():
