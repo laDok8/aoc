@@ -3,7 +3,7 @@ import datetime
 import inspect
 import math
 import os
-from line_profiler_pycharm import profile
+import pickle
 import re
 import time
 from collections import namedtuple
@@ -1056,45 +1056,108 @@ def pretty_print(bricks: list[Brick], project: str = 'x'):
                 print(_brick, end='')
         print(f' {z}')
 
-@profile
-def sift(brick_storage: Brick_sparse):
-    supports = {b._id: set() for all_brick_list in brick_storage.bricks.values() for b in all_brick_list}
-    is_supported_count = {b._id: 0 for all_brick_list in brick_storage.bricks.values() for b in all_brick_list}
-    max_z = max(brick_storage.bricks.keys())
+
+def cached(cachefile):
+    """
+    A function that creates a decorator which will use "cachefile" for caching the results of the decorated function "fn".
+    """
+    def decorator(fn):  # define a decorator for a function "fn"
+        def wrapped(*args, **kwargs):   # define a wrapper that will finally call "fn" with all arguments
+            # if cache exists -> load it and return its content
+            if os.path.exists(cachefile):
+                    with open(cachefile, 'rb') as cachehandle:
+                        print("using cached result from '%s'" % cachefile)
+                        return pickle.load(cachehandle)
+
+            # execute the function with all arguments passed
+            res = fn(*args, **kwargs)
+
+            # write to cache file
+            with open(cachefile, 'wb') as cachehandle:
+                pickle.dump(res, cachehandle)
+
+            return res
+
+        return wrapped
+
+    return decorator   # return this "customized" decorator that uses "cachefile"
+
+@cached('sift.pickle')
+def sift(bricks: list[Brick]):
+    supports = {b._id: set() for b in bricks}
+    is_supported_count = {b._id: 0 for b in bricks}
+    max_z = max(bricks, key=lambda x: x.z).z
     for z in range(0, max_z + 1):
-        print(f'z={z}')
-        level_bricks = brick_storage.get_start(z)
+        # print(f'z={z}')
+        level_bricks = [b for b in bricks if b.z == z]
         # ground
         if z == 1:
             continue
         # try to sift
         for br in level_bricks:
-            brick_storage.remove(br)
-            under = brick_storage.get_end(br.z - 1)
+            bricks.remove(br)
+            under = [b for b in bricks if b.ez == br.z-1]
             while not any(br.is_supported_by(s) for s in under):
-                print(len(under), br.z)
+                if br.z == 1:
+                    break
+                #print(len(under), br.z)
                 br.z -= 1
                 br.ez -= 1
-                if br.z == 0:
-                    break
-                under = brick_storage.get_end(br.z - 1)
-            brick_storage.add(br)
+                under = [b for b in bricks if b.ez == br.z-1]
+            bricks.append(br)
             for i in under:
                 if br.is_supported_by(i):
                     supports[i._id].add(br._id)
                     is_supported_count[br._id] += 1
 
-    return supports, is_supported_count
+    return bricks, supports, is_supported_count
+
+
+
+def my_d22_cache(func):
+    """cache BFS results"""
+    cche = {}
+
+    def wrapper(brick: Brick, supports: dict[int, set[int]], is_supported_count: dict[int, int], bricks: list[Brick]) -> int:
+        # id and is_supported_count are only things changing
+        arg = hash((brick._id, str(is_supported_count)))
+        if arg in cche:
+            return cche[arg]
+        result = func(brick, supports, is_supported_count, bricks)
+        cche[arg] = result
+        # print('cache hit', cur_pos)
+        return result
+
+    return wrapper
+
+
+# @my_d22_cache
+def countFalls(brick: Brick, supports: dict[int, set[int]], is_supported_count: dict[int, int], bricks: list[Brick]) -> int:
+    supporting = supports[brick._id]
+    if len(supporting) == 0:
+        return 0
+    accum = 0
+    for s in supporting:
+        cur_b = [b for b in bricks if b._id == s][0]
+        is_supported_count[s] -= 1
+
+        if is_supported_count[s] == 0:
+            accum += 1
+            # get brick
+            accum += countFalls(cur_b, supports, is_supported_count, bricks)
+    return accum
+
 
 
 @print_timing
 def aoc22():
+    """ lord forgive me for I have sinned"""
     inp = scrape(separator='\n')
     cords = [[[int(x) for x in r.split(',')] for r in i.split('~')] for i in inp]
-    _id = 0
+    _id, bricks = 0, []
     brick_storage = Brick_sparse()
     for c in cords:
-        #bricks.append(Brick(_id, c[0][0], c[0][1], c[0][2], c[1][0], c[1][1], c[1][2]))
+        bricks.append(Brick(_id, c[0][0], c[0][1], c[0][2], c[1][0], c[1][1], c[1][2]))
         brick_storage.add(Brick(_id, c[0][0], c[0][1], c[0][2], c[1][0], c[1][1], c[1][2]))
         _id += 1
 
@@ -1103,15 +1166,23 @@ def aoc22():
     # pretty_print(bricks, 'x')
     # print('\n\n')
     # pretty_print(bricks, 'y')
-    supports, is_supported_count = sift(brick_storage)
+
+    bricks, supports, is_supported_count = sift(bricks)
+
 
     can_be_removed = 0
-    for b in (brick for all_brick_list in brick_storage.bricks.values() for brick in all_brick_list):
+    for b in bricks:
         supporting = supports[b._id]
         if all(is_supported_count[s] > 1 for s in supporting):
             can_be_removed += 1
     print("part 1:", can_be_removed)
-    # 693 incorrect
+
+    caused_fail_acc = 0
+    for b in bricks:
+        caused_fail = countFalls(b, supports,is_supported_count.copy(), bricks)
+        caused_fail_acc += caused_fail
+
+    print("part 2:", caused_fail_acc)
 
 
 def aoc23():
