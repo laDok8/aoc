@@ -1190,6 +1190,7 @@ class Graph:
         # typehint as int list
         v: tuple[int, int]
         w: int
+        sloped: bool = False # for undirected in part 2
 
     adj: dict[tuple[int, int], list[Adjacency]] = {}
     start: tuple[int, int]
@@ -1221,25 +1222,18 @@ class Graph:
                     self.adj[cur_node].append(Graph.Adjacency(cur_pos, weight))
                     break
 
-                # maybe useless cond
-                if grid[cur_pos] in slopes:
-                    weight += 1
-                    ndf = slopes.index(grid[cur_pos])
-                    cur_pos = (cur_pos[0] + directions[ndf][0], cur_pos[1] + directions[ndf][1])
-                    continue
-
                 allowed_dir = []
                 for ndf in directions:
                     new_pos = (cur_pos[0] + ndf[0], cur_pos[1] + ndf[1])
 
                     if grid[new_pos] == '#' or new_pos in visited:
                         continue
+
                     # going against the flow is not allowed
                     if grid[new_pos] in slopes and slopes.index(grid[new_pos]) == (directions.index(ndf) + 2) % 4:
                         continue
 
                     allowed_dir.append((cur_pos, ndf))
-
 
                 # more than 1 allowed dir -> split otherwise do step
                 if len(allowed_dir) > 1:
@@ -1247,19 +1241,15 @@ class Graph:
                         self.adj[cur_node] = []
                     self.adj[cur_node].append(Graph.Adjacency(cur_pos, weight))
                     for ad in allowed_dir:
-                        q.append(ad)
+                        if ad not in q:
+                            q.append(ad)
                     break
-                elif len(allowed_dir) == 1:
+                else: # 1 allowed dir
                     cur_pos, cur_dir = allowed_dir[0]
                     weight += 1
                     cur_pos = (cur_pos[0] + cur_dir[0], cur_pos[1] + cur_dir[1])
                     continue
-                else:
-                    print("emror")
-                    break
 
-    def __str__(self):
-        return str(self.adj)
 
     def longest_path(self):
         # find longest path from start to end
@@ -1280,15 +1270,27 @@ class Graph:
                         continue
         return dist[self.end]
 
+    def longest_path_undirected(self, unvisited, cur) -> int:
+        # find the longest path from start to end without visiting same node twice
+
+        new_unvis = unvisited - {cur}
+        paths = self.adj[cur]
+        _max = 0
+        for path in paths:
+            if path.v in unvisited:
+                _max = max(self.longest_path_undirected(new_unvis, path.v) + path.w, _max)
+
+        return _max
 
 
-
+@print_timing
 def aoc23():
     # assuming acyclicity
     grid = np.array([list(line) for line in scrape()], dtype=str).T
     g = Graph(grid)
-    #print(g)
+    # print(g)
     print("part 1:", g.longest_path())
+    # print("part 2:", g.longest_path_undirected(set(g.adj.keys()) - {g.start}, g.start))
 
 
 def aoc24():
