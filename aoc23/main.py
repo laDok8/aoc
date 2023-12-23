@@ -1014,7 +1014,7 @@ class Brick_sparse:
 
 @dataclass(slots=True, unsafe_hash=True)
 class Brick:
-    _id: int
+    my_id: int
     x: int
     y: int
     z: int
@@ -1042,14 +1042,14 @@ def pretty_print(bricks: list[Brick], project: str = 'x'):
                 _brick = '.'
                 for b in bricks:
                     if b.x <= y <= b.ex and b.z <= z <= b.ez:
-                        _brick = b._id
+                        _brick = b.my_id
                         break
                 print(_brick, end='')
             else:
                 _brick = '.'
                 for b in bricks:
                     if b.y <= y <= b.ey and b.z <= z <= b.ez:
-                        _brick = b._id
+                        _brick = b.my_id
                         break
                 print(_brick, end='')
         print(f' {z}')
@@ -1084,8 +1084,8 @@ def cached(cachefile):
 
 @cached('sift.pickle')
 def sift(bricks: list[Brick]):
-    supports = {b._id: set() for b in bricks}
-    is_supported_count = {b._id: 0 for b in bricks}
+    supports = {b.my_id: set() for b in bricks}
+    is_supported_count = {b.my_id: 0 for b in bricks}
     max_z = max(bricks, key=lambda x: x.z).z
     for z in range(0, max_z + 1):
         # print(f'z={z}')
@@ -1107,8 +1107,8 @@ def sift(bricks: list[Brick]):
             bricks.append(br)
             for i in under:
                 if br.is_supported_by(i):
-                    supports[i._id].add(br._id)
-                    is_supported_count[br._id] += 1
+                    supports[i.my_id].add(br.my_id)
+                    is_supported_count[br.my_id] += 1
 
     return bricks, supports, is_supported_count
 
@@ -1120,7 +1120,7 @@ def my_d22_cache(func):
     def wrapper(brick: Brick, supports: dict[int, set[int]], is_supported_count: dict[int, int],
                 bricks: list[Brick]) -> int:
         # id and is_supported_count are only things changing
-        arg = hash((brick._id, str(is_supported_count)))
+        arg = hash((brick.my_id, str(is_supported_count)))
         if arg in cche:
             return cche[arg]
         result = func(brick, supports, is_supported_count, bricks)
@@ -1134,12 +1134,12 @@ def my_d22_cache(func):
 # @my_d22_cache
 def countFalls(brick: Brick, supports: dict[int, set[int]], is_supported_count: dict[int, int],
                bricks: list[Brick]) -> int:
-    supporting = supports[brick._id]
+    supporting = supports[brick.my_id]
     if len(supporting) == 0:
         return 0
     accum = 0
     for s in supporting:
-        cur_b = [b for b in bricks if b._id == s][0]
+        cur_b = [b for b in bricks if b.my_id == s][0]
         is_supported_count[s] -= 1
 
         if is_supported_count[s] == 0:
@@ -1171,7 +1171,7 @@ def aoc22():
 
     can_be_removed = 0
     for b in bricks:
-        supporting = supports[b._id]
+        supporting = supports[b.my_id]
         if all(is_supported_count[s] > 1 for s in supporting):
             can_be_removed += 1
     print("part 1:", can_be_removed)
@@ -1190,7 +1190,7 @@ class Graph:
         # typehint as int list
         v: tuple[int, int]
         w: int
-        sloped: bool = False # for undirected in part 2
+        against_grain: bool = False  # for undirected in part 2
 
     adj: dict[tuple[int, int], list[Adjacency]] = {}
     start: tuple[int, int]
@@ -1203,12 +1203,11 @@ class Graph:
         directions = [(0, -1), (-1, 0), (0, 1), (1, 0)]
         slopes = ['^', '<', 'v', '>']
 
-        q = [(start, directions[slopes.index('v')])]
+        q = [(start, directions[slopes.index('v')], False)]
         self.adj = {end: []}
-        # walk
 
         while q:
-            cur_node, cur_dir = q.pop(0)
+            cur_node, cur_dir, against_grain = q.pop(0)
             weight = 1
             cur_pos = (cur_node[0] + cur_dir[0], cur_node[1] + cur_dir[1])
             visited = {cur_node}
@@ -1219,7 +1218,8 @@ class Graph:
                 if cur_pos in self.adj.keys():
                     if not self.adj.get(cur_node):
                         self.adj[cur_node] = []
-                    self.adj[cur_node].append(Graph.Adjacency(cur_pos, weight))
+                    if Graph.Adjacency(cur_pos, weight, against_grain) not in self.adj[cur_node]:
+                        self.adj[cur_node].append(Graph.Adjacency(cur_pos, weight, against_grain))
                     break
 
                 allowed_dir = []
@@ -1229,36 +1229,37 @@ class Graph:
                     if grid[new_pos] == '#' or new_pos in visited:
                         continue
 
-                    # going against the flow is not allowed
-                    if grid[new_pos] in slopes and slopes.index(grid[new_pos]) == (directions.index(ndf) + 2) % 4:
-                        continue
-
                     allowed_dir.append((cur_pos, ndf))
 
                 # more than 1 allowed dir -> split otherwise do step
                 if len(allowed_dir) > 1:
                     if not self.adj.get(cur_node):
                         self.adj[cur_node] = []
-                    self.adj[cur_node].append(Graph.Adjacency(cur_pos, weight))
+                    if Graph.Adjacency(cur_pos, weight, against_grain) not in self.adj[cur_node]:
+                        self.adj[cur_node].append(Graph.Adjacency(cur_pos, weight, against_grain))
                     for ad in allowed_dir:
                         if ad not in q:
-                            q.append(ad)
+                            c_pos, c_dir = ad
+                            next_pos = (c_pos[0] + c_dir[0], c_pos[1] + c_dir[1])
+                            _against_grain = slopes.index(grid[next_pos]) == (directions.index(c_dir) + 2) % 4
+                            q.append((c_pos, c_dir, _against_grain))
                     break
-                else: # 1 allowed dir
-                    cur_pos, cur_dir = allowed_dir[0]
-                    weight += 1
-                    cur_pos = (cur_pos[0] + cur_dir[0], cur_pos[1] + cur_dir[1])
-                    continue
-
+                # 1 allowed dir
+                cur_pos, cur_dir = allowed_dir[0]
+                weight += 1
+                cur_pos = (cur_pos[0] + cur_dir[0], cur_pos[1] + cur_dir[1])
 
     def longest_path(self):
-        # find longest path from start to end
+        # find longest path from start to end in directed graph
 
         dist = {self.start: 0}
         q = [self.start]
         while q:
             cur = q.pop(0)
             for adj in self.adj[cur]:
+                if adj.against_grain:
+                    continue
+
                 if adj.v not in dist:
                     dist[adj.v] = dist[cur] + adj.w
                     q.append(adj.v)
@@ -1270,27 +1271,25 @@ class Graph:
                         continue
         return dist[self.end]
 
-    def longest_path_undirected(self, unvisited, cur) -> int:
+    def longest_path_undirected(self, unvisited: set[tuple[int, int]], cur: tuple[int, int]) -> int:
         # find the longest path from start to end without visiting same node twice
 
         new_unvis = unvisited - {cur}
         paths = self.adj[cur]
         _max = 0
-        for path in paths:
-            if path.v in unvisited:
-                _max = max(self.longest_path_undirected(new_unvis, path.v) + path.w, _max)
+
+        for path in [path for path in paths if path.v in new_unvis]:
+            _max = max(self.longest_path_undirected(new_unvis, path.v) + path.w, _max)
 
         return _max
 
 
 @print_timing
 def aoc23():
-    # assuming acyclicity
     grid = np.array([list(line) for line in scrape()], dtype=str).T
     g = Graph(grid)
-    # print(g)
     print("part 1:", g.longest_path())
-    # print("part 2:", g.longest_path_undirected(set(g.adj.keys()) - {g.start}, g.start))
+    print("part 2:", g.longest_path_undirected(set(g.adj.keys()), g.start))
 
 
 def aoc24():
