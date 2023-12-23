@@ -946,41 +946,56 @@ def aoc20():
     print("part 2:", math.lcm(*cycle_len))
 
 
-def my_d21_cache(func):
-    """cache BFS results"""
-    cche = {}
-
-    def wrapper(grid: np.ndarray, cur_pos: tuple, steps: int):
-        # hash of cur_pos and steps
-        arg = hash((cur_pos, steps))
-        if arg in cche:
-            return cche[arg]
-        result = func(grid, cur_pos, steps)
-        cche[arg] = result
-        # print('cache hit', cur_pos)
-        return result
-
-    return wrapper
-
-
-@my_d21_cache
-def dfs_d21(grid: np.ndarray, cur_pos: tuple, steps: int) -> list[tuple]:
-    if steps == 0:
-        return []
+def bfs_d21(grid: np.ndarray, cur_pos: tuple, steps: int) -> list[int]:
     directions = {(0, -1), (1, 0), (0, 1), (-1, 0)}
-    reachable = []
-    for ndf in directions:
-        new_pos = (cur_pos[0] + ndf[0], cur_pos[1] + ndf[1])
-        if not (0 <= new_pos[0] < grid.shape[0] and 0 <= new_pos[1] < grid.shape[1]):
-            continue
-        if grid[new_pos[0], new_pos[1]] == '#':
-            continue
-        if steps == 1:
-            reachable.append(new_pos)
-        elif steps > 1:
-            reachable += dfs_d21(grid, new_pos, steps - 1)
-    # get unique reachable
-    return list(set(reachable))
+    reachable = [0, 0]  # [even, odd]
+
+    q = [cur_pos]
+    visited = set()
+    for stp in range(1, steps + 1):
+        for i in range(len(q)):  # once iterator is created it's immutable
+            cur = q.pop(0)
+            for ndf in directions:
+                new_pos = (cur[0] + ndf[0], cur[1] + ndf[1])
+                inf_new_pos = (new_pos[0] % grid.shape[0], new_pos[1] % grid.shape[1])
+
+                if grid[inf_new_pos[0], inf_new_pos[1]] == '#' or new_pos in visited:
+                    continue
+                visited.add(new_pos)
+                q.append((new_pos))
+                reachable[stp % 2] += 1
+    return reachable
+
+
+def day21_regression(grid: np.ndarray, start: tuple) -> int:
+    """ stolen polynomial idea"""
+    assert (w := len(grid)) // 2 == len(grid[0]) // 2 == start[0] == start[1], "The grid needs to be square with S exactly in the middle"
+
+    # After having crossed the border of the first grid, all further border crossings are seperated by n steps (length/width of grid)
+    # Therefore, the total number of grids to traverse in any direction is 26_501_365 // n = x_final
+    # Assumption: at step 26_501_365 another border crossing is taking place
+    # If so, then it follows that the first crossing takes place at 26_501_365 % n = remainder => start[0]
+    x_final = (65 + 131 * 202300) // w
+    border_crossings = [start[0], start[0] + w, start[0] + 2 * w]
+
+    Y = []
+    for b in border_crossings:
+        Y.append(bfs_d21(grid, start, b)[b % 2])
+
+    coefficients = np.polyfit([0, 1, 2], Y, deg=2)  # get coefficients for quadratic equation y = a*x^2 + bx + c
+    y_final = np.polyval(coefficients, x_final)  # using coefficients, get y value at x_final
+    return y_final.round().astype(int)
+
+
+def aoc21():
+    grid = np.array([list(line) for line in scrape()], dtype=str).T
+    start = np.where(grid == 'S')
+    start = (start[0][0], start[1][0])
+    reachable = bfs_d21(grid, start, 64)
+    print("part 1:", reachable[0])
+
+    reachable = day21_regression(grid, start)
+    print("part 2:", reachable)
 
 
 @print_timing
@@ -988,8 +1003,8 @@ def aoc21():
     grid = np.array([list(line) for line in scrape()], dtype=str).T
     start = np.where(grid == 'S')
     start = (start[0][0], start[1][0])
-    reachable = dfs_d21(grid, start, 64)
-    print("part 1:", len(reachable))
+    print("part 1:", bfs_d21(grid, start, 64)[0])
+    print("part 2:", day21_regression(grid, start))
 
 
 class Brick_sparse:
@@ -1301,4 +1316,5 @@ if __name__ == '__main__':
     today = datetime.date.today().day
     aocs = [aoc1, aoc2, aoc3, aoc4, aoc5, aoc6, aoc7, aoc8, aoc9, aoc10, aoc11, aoc12, aoc13, aoc14, aoc15, aoc16,
             aoc17, aoc18, aoc19, aoc20, aoc21, aoc22, aoc23, aoc24]
+    today = 21
     aocs[today - 1]()
