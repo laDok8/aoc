@@ -992,25 +992,24 @@ def aoc21():
     print("part 1:", len(reachable))
 
 
-
 class Brick_sparse:
     """to optimize lookup time store dicts based on ez"""
     bricks = {}
     bricks_end = {}
+
     def add(self, brick):
         self.bricks[brick.z] = self.bricks.get(brick.z, []) + [brick]
         self.bricks_end[brick.ez] = self.bricks_end.get(brick.ez, []) + [brick]
 
     def get_start(self, z):
         return self.bricks.get(z, [])
+
     def get_end(self, z):
         return self.bricks_end.get(z, [])
 
     def remove(self, brick):
         self.bricks[brick.z].remove(brick)
         self.bricks_end[brick.ez].remove(brick)
-
-
 
 
 @dataclass(slots=True, unsafe_hash=True)
@@ -1025,8 +1024,7 @@ class Brick:
 
     def is_supported_by(self, other) -> bool:
         return self.z - 1 == other.ez and (other.x <= self.x <= other.ex or self.x <= other.x <= self.ex) and (
-                    other.y <= self.y <= other.ey or self.y <= other.y <= self.ey)
-
+                other.y <= self.y <= other.ey or self.y <= other.y <= self.ey)
 
 
 def pretty_print(bricks: list[Brick], project: str = 'x'):
@@ -1061,13 +1059,14 @@ def cached(cachefile):
     """
     A function that creates a decorator which will use "cachefile" for caching the results of the decorated function "fn".
     """
+
     def decorator(fn):  # define a decorator for a function "fn"
-        def wrapped(*args, **kwargs):   # define a wrapper that will finally call "fn" with all arguments
+        def wrapped(*args, **kwargs):  # define a wrapper that will finally call "fn" with all arguments
             # if cache exists -> load it and return its content
             if os.path.exists(cachefile):
-                    with open(cachefile, 'rb') as cachehandle:
-                        print("using cached result from '%s'" % cachefile)
-                        return pickle.load(cachehandle)
+                with open(cachefile, 'rb') as cachehandle:
+                    print("using cached result from '%s'" % cachefile)
+                    return pickle.load(cachehandle)
 
             # execute the function with all arguments passed
             res = fn(*args, **kwargs)
@@ -1080,7 +1079,8 @@ def cached(cachefile):
 
         return wrapped
 
-    return decorator   # return this "customized" decorator that uses "cachefile"
+    return decorator  # return this "customized" decorator that uses "cachefile"
+
 
 @cached('sift.pickle')
 def sift(bricks: list[Brick]):
@@ -1096,14 +1096,14 @@ def sift(bricks: list[Brick]):
         # try to sift
         for br in level_bricks:
             bricks.remove(br)
-            under = [b for b in bricks if b.ez == br.z-1]
+            under = [b for b in bricks if b.ez == br.z - 1]
             while not any(br.is_supported_by(s) for s in under):
                 if br.z == 1:
                     break
-                #print(len(under), br.z)
+                # print(len(under), br.z)
                 br.z -= 1
                 br.ez -= 1
-                under = [b for b in bricks if b.ez == br.z-1]
+                under = [b for b in bricks if b.ez == br.z - 1]
             bricks.append(br)
             for i in under:
                 if br.is_supported_by(i):
@@ -1113,12 +1113,12 @@ def sift(bricks: list[Brick]):
     return bricks, supports, is_supported_count
 
 
-
 def my_d22_cache(func):
     """cache BFS results"""
     cche = {}
 
-    def wrapper(brick: Brick, supports: dict[int, set[int]], is_supported_count: dict[int, int], bricks: list[Brick]) -> int:
+    def wrapper(brick: Brick, supports: dict[int, set[int]], is_supported_count: dict[int, int],
+                bricks: list[Brick]) -> int:
         # id and is_supported_count are only things changing
         arg = hash((brick._id, str(is_supported_count)))
         if arg in cche:
@@ -1132,7 +1132,8 @@ def my_d22_cache(func):
 
 
 # @my_d22_cache
-def countFalls(brick: Brick, supports: dict[int, set[int]], is_supported_count: dict[int, int], bricks: list[Brick]) -> int:
+def countFalls(brick: Brick, supports: dict[int, set[int]], is_supported_count: dict[int, int],
+               bricks: list[Brick]) -> int:
     supporting = supports[brick._id]
     if len(supporting) == 0:
         return 0
@@ -1146,7 +1147,6 @@ def countFalls(brick: Brick, supports: dict[int, set[int]], is_supported_count: 
             # get brick
             accum += countFalls(cur_b, supports, is_supported_count, bricks)
     return accum
-
 
 
 @print_timing
@@ -1169,7 +1169,6 @@ def aoc22():
 
     bricks, supports, is_supported_count = sift(bricks)
 
-
     can_be_removed = 0
     for b in bricks:
         supporting = supports[b._id]
@@ -1179,14 +1178,117 @@ def aoc22():
 
     caused_fail_acc = 0
     for b in bricks:
-        caused_fail = countFalls(b, supports,is_supported_count.copy(), bricks)
+        caused_fail = countFalls(b, supports, is_supported_count.copy(), bricks)
         caused_fail_acc += caused_fail
 
     print("part 2:", caused_fail_acc)
 
 
+class Graph:
+    @dataclass(slots=True)
+    class Adjacency:
+        # typehint as int list
+        v: tuple[int, int]
+        w: int
+
+    adj: dict[tuple[int, int], list[Adjacency]] = {}
+    start: tuple[int, int]
+    end: tuple[int, int]
+
+    def __init__(self, grid: np.ndarray):
+        start, end = (1, 0), (grid.shape[0] - 2, grid.shape[1] - 1)
+        self.start, self.end = start, end
+
+        directions = [(0, -1), (-1, 0), (0, 1), (1, 0)]
+        slopes = ['^', '<', 'v', '>']
+
+        q = [(start, directions[slopes.index('v')])]
+        self.adj = {end: []}
+        # walk
+
+        while q:
+            cur_node, cur_dir = q.pop(0)
+            weight = 1
+            cur_pos = (cur_node[0] + cur_dir[0], cur_node[1] + cur_dir[1])
+            visited = {cur_node}
+            while True:
+                visited.add(cur_pos)
+
+                # already visited -> just add edge
+                if cur_pos in self.adj.keys():
+                    if not self.adj.get(cur_node):
+                        self.adj[cur_node] = []
+                    self.adj[cur_node].append(Graph.Adjacency(cur_pos, weight))
+                    break
+
+                # maybe useless cond
+                if grid[cur_pos] in slopes:
+                    weight += 1
+                    ndf = slopes.index(grid[cur_pos])
+                    cur_pos = (cur_pos[0] + directions[ndf][0], cur_pos[1] + directions[ndf][1])
+                    continue
+
+                allowed_dir = []
+                for ndf in directions:
+                    new_pos = (cur_pos[0] + ndf[0], cur_pos[1] + ndf[1])
+
+                    if grid[new_pos] == '#' or new_pos in visited:
+                        continue
+                    # going against the flow is not allowed
+                    if grid[new_pos] in slopes and slopes.index(grid[new_pos]) == (directions.index(ndf) + 2) % 4:
+                        continue
+
+                    allowed_dir.append((cur_pos, ndf))
+
+
+                # more than 1 allowed dir -> split otherwise do step
+                if len(allowed_dir) > 1:
+                    if not self.adj.get(cur_node):
+                        self.adj[cur_node] = []
+                    self.adj[cur_node].append(Graph.Adjacency(cur_pos, weight))
+                    for ad in allowed_dir:
+                        q.append(ad)
+                    break
+                elif len(allowed_dir) == 1:
+                    cur_pos, cur_dir = allowed_dir[0]
+                    weight += 1
+                    cur_pos = (cur_pos[0] + cur_dir[0], cur_pos[1] + cur_dir[1])
+                    continue
+                else:
+                    print("emror")
+                    break
+
+    def __str__(self):
+        return str(self.adj)
+
+    def longest_path(self):
+        # find longest path from start to end
+
+        dist = {self.start: 0}
+        q = [self.start]
+        while q:
+            cur = q.pop(0)
+            for adj in self.adj[cur]:
+                if adj.v not in dist:
+                    dist[adj.v] = dist[cur] + adj.w
+                    q.append(adj.v)
+                else:
+                    if dist[cur] + adj.w > dist[adj.v]:
+                        dist[adj.v] = dist[cur] + adj.w
+                        q.append(adj.v)
+                    else:
+                        continue
+        return dist[self.end]
+
+
+
+
 def aoc23():
-    pass
+    # assuming acyclicity
+    grid = np.array([list(line) for line in scrape()], dtype=str).T
+    g = Graph(grid)
+    #print(g)
+    print("part 1:", g.longest_path())
 
 
 def aoc24():
