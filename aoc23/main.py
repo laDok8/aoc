@@ -11,7 +11,8 @@ from dataclasses import dataclass
 from functools import reduce, cache
 from heapq import heappush, heappop
 from itertools import dropwhile, takewhile
-from skspatial.objects import Line
+import z3
+
 
 import numpy as np
 import requests as r
@@ -1300,7 +1301,6 @@ class Graph:
         return _max
 
 
-@print_timing
 def aoc23():
     grid = np.array([list(line) for line in scrape()], dtype=str).T
     g = Graph(grid)
@@ -1309,45 +1309,43 @@ def aoc23():
 
 
 def aoc24():
-    # ignoring Z for now
-    #test_area = (7, 27)
-    test_area = (200000000000000, 400000000000000)
-    acc_p1, acc_p2 = 0, 0
-
-    lines = []
+    acc_p1, lines, test_area = 0, [], (int(2e14),int(4e14))
     for line in scrape():
         p, v = (list(map(int, part.split(','))) for part in line.split('@'))
-        p, v = p[:2],v[:2]
-        lines.append((p, v))
-
+        lines.append((np.array(p[:2]).T,np.array(v[:2]).T))
 
     for i in range(len(lines)):
         for j in range(i+1, len(lines)):
+            c1, v1 = lines[i]
+            c2, v2 = lines[j]
 
-            c1 = np.array(lines[i][0]).T
-            c2 = np.array(lines[j][0]).T
-            v1 = np.array(lines[i][1]).T
-            v2 = np.array(lines[j][1]).T
             x, _, rank, _ = np.linalg.lstsq(np.array([v1, -v2]).T, c2 - c1, rcond=None)
-            if rank == 2:
-                # intersection exists
-                if any(x < 0):
-                    continue
-                inter = c1 + v1 * x[0]
-                if not (all(inter >= test_area[0]) and all(inter <= test_area[1])):
-                    continue
+            if rank != 2 or any(x < 0):
+                continue
 
-                c2 = np.array(lines[i][0]).T
-                c1 = np.array(lines[j][0]).T
-                v2 = np.array(lines[i][1]).T
-                v1 = np.array(lines[j][1]).T
-                x, _, _, _ = np.linalg.lstsq(np.array([v1, -v2]).T, c2 - c1, rcond=None)
-                if any(x < 0):
-                    continue
-                acc_p1 += 1
+            # check if in future both ways
+            inter = c1 + v1 * x[0]
+            x, _, _, _ = np.linalg.lstsq(np.array([v2, -v1]).T, c1 - c2, rcond=None)
+            if not all(test_area[0] <= val <= test_area[1] for val in inter) or any(x < 0):
+                continue
 
-
+            acc_p1 += 1
     print("part 1:", acc_p1)
+
+    z3_solver = z3.Solver()
+    rock = z3.RealVector('rock',6)
+    t = z3.RealVector('t',3)
+
+    num = 0
+    for line in scrape():
+        if num == 3: # 3 are enough
+            break
+        p, v = (list(map(int, part.split(','))) for part in line.split('@'))
+        z3_solver.add([(rock[dim] + rock[dim+3] * t[num] == p[dim] + v[dim] * t[num]) for dim in range(3)])
+        num += 1
+
+    z3_solver.check()
+    print("part 2:",z3_solver.model().eval(sum(rock[:3])))
 
 
 
