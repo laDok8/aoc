@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from functools import reduce, cache
 from heapq import heappush, heappop
 from itertools import dropwhile, takewhile
+from skspatial.objects import Line
 
 import numpy as np
 import requests as r
@@ -1308,7 +1309,48 @@ def aoc23():
 
 
 def aoc24():
-    pass
+    # v1 = np.array([1, 2, 0]).T
+    # c1 = np.array([2, 1, 0]).T
+    # v2 = np.array([1, 2, 0]).T
+    # c2 = np.array([2, 3, 0]).T
+    # # in this case the solved x is [-1.  1.], error is 0, and rank is 2
+    # x, err, rank = np.linalg.lstsq(np.array([v1, -v2]).T, c2 - c1, rcond=None)[:3]
+    # if rank == 2:
+    #     # intersection exists
+    #     print(v1 * x[0] + c1)
+    # else:
+    #     print("no intersection")
+
+    # ignoring Z for now
+    test_area = (7,27)
+
+    lines = []
+    for line in scrape():
+        p, v = (list(map(int, part.split(','))) for part in line.split('@'))
+        p[2],v[2] = test_area[0],0
+        # print(p,v)
+        lines.append(Line(p, v))
+
+
+
+    # find intersections
+    intersections = []
+    for i in range(len(lines)):
+        for j in range(i+1,len(lines)):
+            try:
+                intersection = lines[i].intersect_line(lines[j])
+                #print(lines[i],lines[j],intersection)
+                if all([test_area[0] <= _p <= test_area[1] for _p in intersection]):
+                    # check if point is in past or not
+
+
+                    print(lines[i],lines[j],intersection)
+                    intersections.append(intersection)
+            except:
+                pass # parallel lines
+
+    #print(lines)
+
 
 
 if __name__ == '__main__':
@@ -1316,5 +1358,4 @@ if __name__ == '__main__':
     today = datetime.date.today().day
     aocs = [aoc1, aoc2, aoc3, aoc4, aoc5, aoc6, aoc7, aoc8, aoc9, aoc10, aoc11, aoc12, aoc13, aoc14, aoc15, aoc16,
             aoc17, aoc18, aoc19, aoc20, aoc21, aoc22, aoc23, aoc24]
-    today = 21
     aocs[today - 1]()
