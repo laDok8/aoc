@@ -1309,47 +1309,45 @@ def aoc23():
 
 
 def aoc24():
-    # v1 = np.array([1, 2, 0]).T
-    # c1 = np.array([2, 1, 0]).T
-    # v2 = np.array([1, 2, 0]).T
-    # c2 = np.array([2, 3, 0]).T
-    # # in this case the solved x is [-1.  1.], error is 0, and rank is 2
-    # x, err, rank = np.linalg.lstsq(np.array([v1, -v2]).T, c2 - c1, rcond=None)[:3]
-    # if rank == 2:
-    #     # intersection exists
-    #     print(v1 * x[0] + c1)
-    # else:
-    #     print("no intersection")
-
     # ignoring Z for now
-    test_area = (7,27)
+    #test_area = (7, 27)
+    test_area = (200000000000000, 400000000000000)
+    acc_p1, acc_p2 = 0, 0
 
     lines = []
     for line in scrape():
         p, v = (list(map(int, part.split(','))) for part in line.split('@'))
-        p[2],v[2] = test_area[0],0
-        # print(p,v)
-        lines.append(Line(p, v))
+        p, v = p[:2],v[:2]
+        lines.append((p, v))
 
 
-
-    # find intersections
-    intersections = []
     for i in range(len(lines)):
-        for j in range(i+1,len(lines)):
-            try:
-                intersection = lines[i].intersect_line(lines[j])
-                #print(lines[i],lines[j],intersection)
-                if all([test_area[0] <= _p <= test_area[1] for _p in intersection]):
-                    # check if point is in past or not
+        for j in range(i+1, len(lines)):
+
+            c1 = np.array(lines[i][0]).T
+            c2 = np.array(lines[j][0]).T
+            v1 = np.array(lines[i][1]).T
+            v2 = np.array(lines[j][1]).T
+            x, _, rank, _ = np.linalg.lstsq(np.array([v1, -v2]).T, c2 - c1, rcond=None)
+            if rank == 2:
+                # intersection exists
+                if any(x < 0):
+                    continue
+                inter = c1 + v1 * x[0]
+                if not (all(inter >= test_area[0]) and all(inter <= test_area[1])):
+                    continue
+
+                c2 = np.array(lines[i][0]).T
+                c1 = np.array(lines[j][0]).T
+                v2 = np.array(lines[i][1]).T
+                v1 = np.array(lines[j][1]).T
+                x, _, _, _ = np.linalg.lstsq(np.array([v1, -v2]).T, c2 - c1, rcond=None)
+                if any(x < 0):
+                    continue
+                acc_p1 += 1
 
 
-                    print(lines[i],lines[j],intersection)
-                    intersections.append(intersection)
-            except:
-                pass # parallel lines
-
-    #print(lines)
+    print("part 1:", acc_p1)
 
 
 
