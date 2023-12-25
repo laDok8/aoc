@@ -11,11 +11,12 @@ from dataclasses import dataclass
 from functools import reduce, cache
 from heapq import heappush, heappop
 from itertools import dropwhile, takewhile
-import z3
+from random import sample
 
-
+import networkx as nx
 import numpy as np
 import requests as r
+import z3
 from dotenv import dotenv_values
 
 ENV_VARS = dotenv_values('.env')
@@ -971,7 +972,8 @@ def bfs_d21(grid: np.ndarray, cur_pos: tuple, steps: int) -> list[int]:
 
 def day21_regression(grid: np.ndarray, start: tuple) -> int:
     """ stolen polynomial idea"""
-    assert (w := len(grid)) // 2 == len(grid[0]) // 2 == start[0] == start[1], "The grid needs to be square with S exactly in the middle"
+    assert (w := len(grid)) // 2 == len(grid[0]) // 2 == start[0] == start[
+        1], "The grid needs to be square with S exactly in the middle"
 
     # After having crossed the border of the first grid, all further border crossings are seperated by n steps (length/width of grid)
     # Therefore, the total number of grids to traverse in any direction is 26_501_365 // n = x_final
@@ -1309,13 +1311,13 @@ def aoc23():
 
 
 def aoc24():
-    acc_p1, lines, test_area = 0, [], (int(2e14),int(4e14))
+    acc_p1, lines, test_area = 0, [], (int(2e14), int(4e14))
     for line in scrape():
         p, v = (list(map(int, part.split(','))) for part in line.split('@'))
-        lines.append((np.array(p[:2]).T,np.array(v[:2]).T))
+        lines.append((np.array(p[:2]).T, np.array(v[:2]).T))
 
     for i in range(len(lines)):
-        for j in range(i+1, len(lines)):
+        for j in range(i + 1, len(lines)):
             c1, v1 = lines[i]
             c2, v2 = lines[j]
 
@@ -1333,25 +1335,40 @@ def aoc24():
     print("part 1:", acc_p1)
 
     z3_solver = z3.Solver()
-    rock = z3.RealVector('rock',6)
-    t = z3.RealVector('t',3)
+    rock = z3.RealVector('rock', 6)
+    t = z3.RealVector('t', 3)
 
     num = 0
     for line in scrape():
-        if num == 3: # 3 are enough
+        if num == 3:  # 3 are enough
             break
         p, v = (list(map(int, part.split(','))) for part in line.split('@'))
-        z3_solver.add([(rock[dim] + rock[dim+3] * t[num] == p[dim] + v[dim] * t[num]) for dim in range(3)])
+        z3_solver.add([(rock[dim] + rock[dim + 3] * t[num] == p[dim] + v[dim] * t[num]) for dim in range(3)])
         num += 1
 
     z3_solver.check()
-    print("part 2:",z3_solver.model().eval(sum(rock[:3])))
+    print("part 2:", z3_solver.model().eval(sum(rock[:3])))
 
+
+def aoc25():
+    g = nx.Graph()
+    for k, vals in (line.split(':') for line in scrape()):
+        vals = vals.split()
+        for v in vals:
+            g.add_edge(k, v, capacity=1)
+    # import matplotlib.pyplot as plt
+    # nx.draw(g, with_labels=True)
+    # plt.savefig('graph.svg')
+    cut_val, partition = 0, (set(), set())
+    while cut_val != 3:
+        s, e = sample(list(g.nodes()), 2)
+        cut_val, partition = nx.minimum_cut(g, s, e)
+    print("part 1:", len(partition[0]) * len(partition[1]))
 
 
 if __name__ == '__main__':
     # start aoc for given calendar day
     today = datetime.date.today().day
     aocs = [aoc1, aoc2, aoc3, aoc4, aoc5, aoc6, aoc7, aoc8, aoc9, aoc10, aoc11, aoc12, aoc13, aoc14, aoc15, aoc16,
-            aoc17, aoc18, aoc19, aoc20, aoc21, aoc22, aoc23, aoc24]
+            aoc17, aoc18, aoc19, aoc20, aoc21, aoc22, aoc23, aoc24, aoc25]
     aocs[today - 1]()
