@@ -3,7 +3,6 @@ import datetime
 import inspect
 import math
 import os
-import pickle
 import re
 import time
 from collections import namedtuple
@@ -89,14 +88,13 @@ def aoc2():
                 maxes[color] = sum(takes_in_color) if sum(takes_in_color) > maxes[color] else maxes[color]
         return _id, maxes
 
-    possible_ids_sum, fewest_cubes_sum, inp = 0, 0, scrape()
+    possible_ids_sum, fewest_cubes_sum = 0, 0
     part1_limits = {'red': 12, 'green': 13, 'blue': 14}
-    for game in inp:
+    for game in scrape():
         game_id, cur_lims = separate_game(game)
         if all(cur_lims[color] <= part1_limits[color] for color in cur_lims.keys()):
             possible_ids_sum += game_id
-        fewest_cubes_sum += reduce((lambda x, y: x * y), cur_lims.values())
-
+        fewest_cubes_sum += math.prod(cur_lims.values())
     print("part 1:", possible_ids_sum, "\npart 2:", fewest_cubes_sum)
 
 
@@ -115,8 +113,8 @@ class Rectangle:
 
 
 def aoc3():
-    all_parts, all_nums, inp = [], [], scrape()
-    for (_y, line) in enumerate(inp):
+    all_parts, all_nums = [], []
+    for (_y, line) in enumerate(scrape()):
         num_iter, part_iter = re.finditer(r'\d+', line), re.finditer(r'[^.\d]', line)
         for num in num_iter:
             all_nums.append((Rectangle(x=num.span()[0], y=_y, width=num.span()[1] - num.span()[0]), int(num.group())))
@@ -125,10 +123,9 @@ def aoc3():
 
     sum_part1 = sum(
         map(lambda _x: _x[1], filter(lambda _num: any(_num[0].is_adjacent(_part) for _part in all_parts), all_nums)))
-    sum_part2 = sum(reduce(lambda _x, y, p=part: _x * y,
-                           map(lambda x, p=part: x[1], filter(lambda _num, p=part: p.is_adjacent(_num[0]), all_nums)),
-                           1) for part in all_parts if
-                    len(list(filter(lambda _num, p=part: p.is_adjacent(_num[0]), all_nums))) == 2)
+    sum_part2 = sum(
+        math.prod(map(lambda x, p=part: x[1], filter(lambda _num, p=part: p.is_adjacent(_num[0]), all_nums))) for part
+        in all_parts if len(list(filter(lambda _num, p=part: p.is_adjacent(_num[0]), all_nums))) == 2)
     print("part 1:", sum_part1, "\npart 2:", sum_part2)
 
 
@@ -207,8 +204,8 @@ def aoc6():
 
 
 def get_poker_hand_type(occurrences: dict):
-    if m := max(occurrences.values()) >= 4:
-        return str(14 - m)  # five/four of a kind
+    if (m := max(occurrences.values())) >= 4:
+        return str(m + 4)  # five/four of a kind
     if sorted(occurrences.values()) == [2, 3]:
         return '7'  # full house
     if sorted(occurrences.values()) == [1, 1, 3]:
@@ -278,8 +275,7 @@ def aoc8():
 
     steps_p1 = calculate_path_d8(['AAA'], nodes, steps)
     steps_p2 = calculate_path_d8([k for k in nodes.keys() if k[-1] == 'A'], nodes, steps)
-
-    print("part 2:", steps_p1, "\npart 2:", steps_p2)
+    print("part 1:", steps_p1, "\npart 2:", steps_p2)
 
 
 def aoc9():
@@ -418,13 +414,13 @@ def aoc11():
         stars = np.where(grid == '#')
         stars = [Pos(x, y) for x, y in zip(stars[0], stars[1])]
 
-        def adjust_coordinates(stars: list[Pos], axis: str, _multi: int):
-            max_coord = max(stars, key=lambda x: getattr(x, axis)).__getattribute__(axis)
+        def adjust_coordinates(_stars: list[Pos], axis: str, _multi: int):
+            max_coord = max(_stars, key=lambda x: getattr(x, axis)).__getattribute__(axis)
 
             for i in range(max_coord, 0, -1):
-                if any(getattr(s, axis) == i for s in stars):
+                if any(getattr(s, axis) == i for s in _stars):
                     continue
-                for s in stars:
+                for s in _stars:
                     if getattr(s, axis) > i:
                         setattr(s, axis, getattr(s, axis) + (_multi - 1))
 
@@ -587,7 +583,7 @@ def aoc14():
                     grid[y, x], grid[new_pos, x] = '.', 'O'
 
             if itr == 0 and rot == 0:
-                print("part 1:", d14_supp_strength(grid), end='')
+                print("part 1:", d14_supp_strength(grid))
             grid = np.rot90(grid, 3)
 
         if prev_seen := cached.get(hash(grid.tobytes())):
@@ -598,7 +594,7 @@ def aoc14():
             cached[hash(grid.tobytes())] = itr
         itr += 1
 
-    print(' part 2:', d14_supp_strength(grid))
+    print('part 2:', d14_supp_strength(grid))
 
 
 def d15_hash(inp: str) -> int:
@@ -606,11 +602,11 @@ def d15_hash(inp: str) -> int:
 
 
 def aoc15():
-    acc_p1, inp = 0, scrape(separator=',')
+    acc_p1 = 0
 
     boxes_lbls = [[] for _ in range(256)]
     boxes_focals = [[] for _ in range(256)]
-    for puz in inp:
+    for puz in scrape(separator=','):
         acc_p1 += d15_hash(puz)
 
         idx = puz.find('=') if '=' in puz else puz.find('-')
@@ -638,7 +634,7 @@ def aoc15():
         for i, f in enumerate(focals, 1):
             acc_p2 += box_id * i * f
 
-    print('part 1:', acc_p1, 'part 1:', acc_p2)
+    print('part 1:', acc_p1, '\npart 2:', acc_p2)
 
 
 def _pretty_print_grid(grid):
@@ -673,8 +669,9 @@ def aoc16():
             cur = work_stack.pop(0)
 
             # out of borders / already passed -> continue
-            if cur.x < 0 or cur.y < 0 or cur.x >= max_x or cur.y >= max_y or hash(cur) in visited:
+            if cur.x < 0 or cur.y < 0 or cur.x >= max_x or cur.y >= max_y or hash((cur.x, cur.y, cur.dir)) in visited:
                 continue
+            visited.append(hash((cur.x, cur.y, cur.dir)))
             passed[cur.x, cur.y] = 1
 
             if (grid[cur.x, cur.y] not in ['|', '\\', '/', '-'] or grid[cur.x, cur.y] == '|' and cur.dir in [0, 2] or
@@ -696,7 +693,7 @@ def aoc16():
     print('part 1:', accs[0], '\npart 2:', max(accs))
 
 
-def astar(maze: list[list[int]], low_straight: int = 0, high_straight: int = 3) -> int:
+def d17_traverse_grid(maze: list[list[int]], low_straight: int = 0, high_straight: int = 3) -> int:
     """Returns min heat loss path from start to end in maze"""
     directions = {(0, -1), (1, 0), (0, 1), (-1, 0)}
     pq = [(0, 0, 0, 0, 0, 0)]
@@ -730,8 +727,7 @@ def astar(maze: list[list[int]], low_straight: int = 0, high_straight: int = 3) 
 def aoc17():
     # switch X and Y for sanity
     grid = np.array([list(line) for line in scrape()], dtype=int).T
-
-    print("part 1:", astar(grid, 0, 3), "\npart 2:", astar(grid, 3, 10))
+    print("part 1:", d17_traverse_grid(grid, 0, 3), "\npart 2:", d17_traverse_grid(grid, 3, 10))
 
 
 def shoelace_area(points: list[tuple[int, int]]) -> int:
@@ -741,14 +737,13 @@ def shoelace_area(points: list[tuple[int, int]]) -> int:
     return abs(acc) // 2
 
 
-@print_timing
 def aoc18():
     directions = {'R': (1, 0), 'D': (0, 1), 'L': (-1, 0), 'U': (0, -1)}
-    cur_p1, cur_p2, bound_p1, bound_p2, inp = (0, 0), (0, 0), 0, 0, scrape()
+    cur_p1, cur_p2, bound_p1, bound_p2 = (0, 0), (0, 0), 0, 0
     points_p1, points_p2 = [cur_p1], [cur_p2]
     dir_vals = list(directions.values())
 
-    for _dir, num, paint in [i.split() for i in inp]:
+    for _dir, num, paint in [i.split() for i in scrape()]:
         bound_p1 += int(num)
         cur_p1 = (cur_p1[0] + directions[_dir][0] * int(num), cur_p1[1] + directions[_dir][1] * int(num))
         points_p1.append(cur_p1)
@@ -837,11 +832,54 @@ def aoc19():
     print("part 2:", solve_flow((1, 4000, 1, 4000, 1, 4000, 1, 4000), flow_dict, flow_dict['in']))
 
 
+def d20_send_messages(modules: dict, modules_state: dict, message: tuple, state_cache: set = None) -> tuple:
+    """module and cache state gets altered -> return lo,hi and cycle if present"""
+    low_p, hi_p = 0, 0
+
+    message_q = [message]
+    low_p += 1
+    while len(message_q) != 0:
+        mdl_nm, msg, sender = message_q.pop(0)
+        if mdl_nm not in modules:
+            continue
+
+        if mdl_nm == 'broadcaster':
+            for rcvs in modules[mdl_nm][1]:
+                message_q.append((rcvs, False, mdl_nm))
+            low_p += len(modules[mdl_nm][1])
+            continue
+
+        typ, outputs = modules[mdl_nm]
+
+        state = modules_state[mdl_nm]
+        if typ == '%':
+            if msg:
+                continue
+            modules_state[mdl_nm] = not state
+            for rcvs in outputs:
+                message_q.append((rcvs, modules_state[mdl_nm], mdl_nm))
+            hi_p += len(outputs) if modules_state[mdl_nm] else 0
+            low_p += len(outputs) if not modules_state[mdl_nm] else 0
+        else:  # typ == '&':
+            # update
+            state[sender] = msg
+            _msg = not all(state.values())
+
+            for rcvs in outputs:
+                message_q.append((rcvs, _msg, mdl_nm))
+            hi_p += len(outputs) if _msg else 0
+            low_p += len(outputs) if not _msg else 0
+    if state_cache is not None:
+        if hash(str(modules_state)) in state_cache:
+            return low_p, hi_p, True
+        state_cache.add(hash(str(modules_state)))
+    return low_p, hi_p, False
+
+
 def aoc20():
     # module: name<->type, output and separate (default) state
     modules = {}
     modules_state = {}  # High = True, Low = False
-    button_press = ('broadcaster', False, 'button')
     for line in scrape():
         nm, out = line.split('->')
         typ, nm = nm.strip()[0], nm.strip()[1:]
@@ -862,101 +900,30 @@ def aoc20():
                     modules_state[o] = {}
                 modules_state[o][nm] = False
 
-    # presses, iter
-    low_p, hi_p, press = 0, 0, 1
-    while press <= int(1e3):
-        message_q = [button_press]
-        low_p += 1
-        while len(message_q) != 0:
-            mdl_nm, msg, sender = message_q.pop(0)
-            if mdl_nm not in modules:
-                continue
-
-            if mdl_nm == 'broadcaster':
-                for rcvs in modules[mdl_nm][1]:
-                    message_q.append((rcvs, False, mdl_nm))
-                low_p += len(modules[mdl_nm][1])
-                continue
-            typ, outputs = modules[mdl_nm]
-
-            state = modules_state[mdl_nm]
-            if typ == '%':
-                if msg:
-                    continue
-                _st = not state
-                modules_state[mdl_nm] = _st
-                for rcvs in outputs:
-                    message_q.append((rcvs, _st, mdl_nm))
-                if _st:
-                    hi_p += len(outputs)
-                else:
-                    low_p += len(outputs)
-            elif typ == '&':
-                # update
-                state[sender] = msg
-                _msg = not all(state.values())
-
-                for rcvs in outputs:
-                    message_q.append((rcvs, _msg, mdl_nm))
-                if _msg:
-                    hi_p += len(outputs)
-                else:
-                    low_p += len(outputs)
-            else:
-                pass
-        press += 1
+    low_p, hi_p = map(sum,
+                      zip(*[d20_send_messages(modules, modules_state, ('broadcaster', False, 'button'))[:2] for _ in
+                            range(int(1e3))]))
     print("part 1:", low_p * hi_p)
 
-    cycle_len = []
+    low_p = 1  # reuse for math.LCM
     for ot in modules['broadcaster'][1]:
-        press = 1
-        state_cche = {}
-        while True:
-            message_q = [(ot, False, 'broadcaster')]
-            low_p += 1
-            while len(message_q) != 0:
-                mdl_nm, msg, sender = message_q.pop(0)
-                if mdl_nm not in modules:
-                    continue
-
-                typ, outputs = modules[mdl_nm]
-
-                state = modules_state[mdl_nm]
-                if typ == '%':
-                    if msg:
-                        continue
-                    _st = not state
-                    modules_state[mdl_nm] = _st
-                    for rcvs in outputs:
-                        message_q.append((rcvs, _st, mdl_nm))
-
-                elif typ == '&':
-                    # update
-                    state[sender] = msg
-                    _msg = not all(state.values())
-
-                    for rcvs in outputs:
-                        message_q.append((rcvs, _msg, mdl_nm))
-                else:
-                    pass
-
-            hsh = hash(str(modules_state))
-            if hsh in state_cche:
-                cycle_len.append(press - 1)
-                break
-            state_cche[hash(str(modules_state))] = (low_p, hi_p, press)
+        state_cache = set()
+        press, cycle = 0, False
+        while not cycle:
+            _, _, cycle = d20_send_messages(modules, modules_state, (ot, False, 'broadcaster'), state_cache)
             press += 1
-    print("part 2:", math.lcm(*cycle_len))
+        low_p *= (press - 1)
+    print("part 2:", low_p)
 
 
-def bfs_d21(grid: np.ndarray, cur_pos: tuple, steps: int) -> list[int]:
+def bfs_d21(grid: np.ndarray, cur_pos: tuple, steps: int) -> int:
     directions = {(0, -1), (1, 0), (0, 1), (-1, 0)}
     reachable = [0, 0]  # [even, odd]
 
     q = [cur_pos]
     visited = set()
     for stp in range(1, steps + 1):
-        for i in range(len(q)):  # once iterator is created it's immutable
+        for _ in range(len(q)):  # once iterator is created it's immutable
             cur = q.pop(0)
             for ndf in directions:
                 new_pos = (cur[0] + ndf[0], cur[1] + ndf[1])
@@ -965,29 +932,22 @@ def bfs_d21(grid: np.ndarray, cur_pos: tuple, steps: int) -> list[int]:
                 if grid[inf_new_pos[0], inf_new_pos[1]] == '#' or new_pos in visited:
                     continue
                 visited.add(new_pos)
-                q.append((new_pos))
+                q.append(new_pos)
                 reachable[stp % 2] += 1
-    return reachable
+    return reachable[steps % 2]
 
 
 def day21_regression(grid: np.ndarray, start: tuple) -> int:
-    """ stolen polynomial idea"""
+    """ stolen polynomial idea -> steps exactly to border, extrapolate quadratic function"""
     assert (w := len(grid)) // 2 == len(grid[0]) // 2 == start[0] == start[
         1], "The grid needs to be square with S exactly in the middle"
 
-    # After having crossed the border of the first grid, all further border crossings are seperated by n steps (length/width of grid)
-    # Therefore, the total number of grids to traverse in any direction is 26_501_365 // n = x_final
-    # Assumption: at step 26_501_365 another border crossing is taking place
-    # If so, then it follows that the first crossing takes place at 26_501_365 % n = remainder => start[0]
     x_final = (65 + 131 * 202300) // w
     border_crossings = [start[0], start[0] + w, start[0] + 2 * w]
+    y = [bfs_d21(grid, start, b) for b in border_crossings]
 
-    Y = []
-    for b in border_crossings:
-        Y.append(bfs_d21(grid, start, b)[b % 2])
-
-    coefficients = np.polyfit([0, 1, 2], Y, deg=2)  # get coefficients for quadratic equation y = a*x^2 + bx + c
-    y_final = np.polyval(coefficients, x_final)  # using coefficients, get y value at x_final
+    coefficients = np.polyfit([0, 1, 2], y, deg=2)
+    y_final = np.polyval(coefficients, x_final)
     return y_final.round().astype(int)
 
 
@@ -995,40 +955,8 @@ def aoc21():
     grid = np.array([list(line) for line in scrape()], dtype=str).T
     start = np.where(grid == 'S')
     start = (start[0][0], start[1][0])
-    reachable = bfs_d21(grid, start, 64)
-    print("part 1:", reachable[0])
-
-    reachable = day21_regression(grid, start)
-    print("part 2:", reachable)
-
-
-@print_timing
-def aoc21():
-    grid = np.array([list(line) for line in scrape()], dtype=str).T
-    start = np.where(grid == 'S')
-    start = (start[0][0], start[1][0])
-    print("part 1:", bfs_d21(grid, start, 64)[0])
+    print("part 1:", bfs_d21(grid, start, 64))
     print("part 2:", day21_regression(grid, start))
-
-
-class Brick_sparse:
-    """to optimize lookup time store dicts based on ez"""
-    bricks = {}
-    bricks_end = {}
-
-    def add(self, brick):
-        self.bricks[brick.z] = self.bricks.get(brick.z, []) + [brick]
-        self.bricks_end[brick.ez] = self.bricks_end.get(brick.ez, []) + [brick]
-
-    def get_start(self, z):
-        return self.bricks.get(z, [])
-
-    def get_end(self, z):
-        return self.bricks_end.get(z, [])
-
-    def remove(self, brick):
-        self.bricks[brick.z].remove(brick)
-        self.bricks_end[brick.ez].remove(brick)
 
 
 @dataclass(slots=True, unsafe_hash=True)
@@ -1074,56 +1002,22 @@ def pretty_print(bricks: list[Brick], project: str = 'x'):
         print(f' {z}')
 
 
-def cached(cachefile):
-    """
-    A function that creates a decorator which will use "cachefile" for caching the results of the decorated function "fn".
-    """
-
-    def decorator(fn):  # define a decorator for a function "fn"
-        def wrapped(*args, **kwargs):  # define a wrapper that will finally call "fn" with all arguments
-            # if cache exists -> load it and return its content
-            if os.path.exists(cachefile):
-                with open(cachefile, 'rb') as cachehandle:
-                    print("using cached result from '%s'" % cachefile)
-                    return pickle.load(cachehandle)
-
-            # execute the function with all arguments passed
-            res = fn(*args, **kwargs)
-
-            # write to cache file
-            with open(cachefile, 'wb') as cachehandle:
-                pickle.dump(res, cachehandle)
-
-            return res
-
-        return wrapped
-
-    return decorator  # return this "customized" decorator that uses "cachefile"
-
-
-@cached('sift.pickle')
 def sift(bricks: list[Brick]):
     supports = {b.my_id: set() for b in bricks}
     is_supported_count = {b.my_id: 0 for b in bricks}
     max_z = max(bricks, key=lambda x: x.z).z
-    for z in range(0, max_z + 1):
-        # print(f'z={z}')
+    for z in range(2, max_z + 1):
         level_bricks = [b for b in bricks if b.z == z]
-        # ground
-        if z == 1:
-            continue
-        # try to sift
+        # try sift
         for br in level_bricks:
             bricks.remove(br)
             under = [b for b in bricks if b.ez == br.z - 1]
-            while not any(br.is_supported_by(s) for s in under):
-                if br.z == 1:
-                    break
-                # print(len(under), br.z)
+            while not any(br.is_supported_by(s) for s in under) and br.z != 1:
                 br.z -= 1
                 br.ez -= 1
                 under = [b for b in bricks if b.ez == br.z - 1]
             bricks.append(br)
+
             for i in under:
                 if br.is_supported_by(i):
                     supports[i.my_id].add(br.my_id)
@@ -1132,27 +1026,8 @@ def sift(bricks: list[Brick]):
     return bricks, supports, is_supported_count
 
 
-def my_d22_cache(func):
-    """cache BFS results"""
-    cche = {}
-
-    def wrapper(brick: Brick, supports: dict[int, set[int]], is_supported_count: dict[int, int],
+def count_falls(brick: Brick, supports: dict[int, set[int]], is_supported_count: dict[int, int],
                 bricks: list[Brick]) -> int:
-        # id and is_supported_count are only things changing
-        arg = hash((brick.my_id, str(is_supported_count)))
-        if arg in cche:
-            return cche[arg]
-        result = func(brick, supports, is_supported_count, bricks)
-        cche[arg] = result
-        # print('cache hit', cur_pos)
-        return result
-
-    return wrapper
-
-
-# @my_d22_cache
-def countFalls(brick: Brick, supports: dict[int, set[int]], is_supported_count: dict[int, int],
-               bricks: list[Brick]) -> int:
     supporting = supports[brick.my_id]
     if len(supporting) == 0:
         return 0
@@ -1164,28 +1039,20 @@ def countFalls(brick: Brick, supports: dict[int, set[int]], is_supported_count: 
         if is_supported_count[s] == 0:
             accum += 1
             # get brick
-            accum += countFalls(cur_b, supports, is_supported_count, bricks)
+            accum += count_falls(cur_b, supports, is_supported_count, bricks)
     return accum
 
 
-@print_timing
 def aoc22():
-    """ lord forgive me for I have sinned"""
-    inp = scrape(separator='\n')
-    cords = [[[int(x) for x in r.split(',')] for r in i.split('~')] for i in inp]
+    cords = [[[int(x) for x in _r.split(',')] for _r in i.split('~')] for i in scrape(separator='\n')]
     _id, bricks = 0, []
-    brick_storage = Brick_sparse()
     for c in cords:
         bricks.append(Brick(_id, c[0][0], c[0][1], c[0][2], c[1][0], c[1][1], c[1][2]))
-        brick_storage.add(Brick(_id, c[0][0], c[0][1], c[0][2], c[1][0], c[1][1], c[1][2]))
         _id += 1
 
-    assert all(b.z <= b.ez for all_brick_list in brick_storage.bricks.values() for b in all_brick_list)
+    assert all(b.z <= b.ez for b in bricks)
 
-    # pretty_print(bricks, 'x')
-    # print('\n\n')
-    # pretty_print(bricks, 'y')
-
+    # pretty_print(bricks)
     bricks, supports, is_supported_count = sift(bricks)
 
     can_be_removed = 0
@@ -1197,9 +1064,7 @@ def aoc22():
 
     caused_fail_acc = 0
     for b in bricks:
-        caused_fail = countFalls(b, supports, is_supported_count.copy(), bricks)
-        caused_fail_acc += caused_fail
-
+        caused_fail_acc += count_falls(b, supports, is_supported_count.copy(), bricks)
     print("part 2:", caused_fail_acc)
 
 
@@ -1215,35 +1080,38 @@ class Graph:
     start: tuple[int, int]
     end: tuple[int, int]
 
+    def add_edge(self, cur_node: tuple[int, int], cur_pos: tuple[int, int], weight: int, against_grain: bool):
+        if not self.adj.get(cur_node):
+            self.adj[cur_node] = []
+        if Graph.Adjacency(cur_pos, weight, against_grain) not in self.adj[cur_node]:
+            self.adj[cur_node].append(Graph.Adjacency(cur_pos, weight, against_grain))
+
+    def step(self, cur_node: tuple[int, int], cur_dir: tuple[int, int]) -> tuple[int, int]:
+        return cur_node[0] + cur_dir[0], cur_node[1] + cur_dir[1]
+
     def __init__(self, grid: np.ndarray):
-        start, end = (1, 0), (grid.shape[0] - 2, grid.shape[1] - 1)
-        self.start, self.end = start, end
+        self.start, self.end = (1, 0), (grid.shape[0] - 2, grid.shape[1] - 1)
+        directions = {'^': (0, -1), '<': (-1, 0), 'v': (0, 1), '>': (1, 0)}
 
-        directions = [(0, -1), (-1, 0), (0, 1), (1, 0)]
-        slopes = ['^', '<', 'v', '>']
-
-        q = [(start, directions[slopes.index('v')], False)]
-        self.adj = {end: []}
+        q = [(self.start, directions['v'], False)]
+        self.adj = {self.end: []}
 
         while q:
             cur_node, cur_dir, against_grain = q.pop(0)
             weight = 1
-            cur_pos = (cur_node[0] + cur_dir[0], cur_node[1] + cur_dir[1])
+            cur_pos = self.step(cur_node, cur_dir)
             visited = {cur_node}
             while True:
                 visited.add(cur_pos)
 
                 # already visited -> just add edge
                 if cur_pos in self.adj.keys():
-                    if not self.adj.get(cur_node):
-                        self.adj[cur_node] = []
-                    if Graph.Adjacency(cur_pos, weight, against_grain) not in self.adj[cur_node]:
-                        self.adj[cur_node].append(Graph.Adjacency(cur_pos, weight, against_grain))
+                    self.add_edge(cur_node, cur_pos, weight, against_grain)
                     break
 
                 allowed_dir = []
-                for ndf in directions:
-                    new_pos = (cur_pos[0] + ndf[0], cur_pos[1] + ndf[1])
+                for ndf in directions.values():
+                    new_pos = self.step(cur_pos, ndf)
 
                     if grid[new_pos] == '#' or new_pos in visited:
                         continue
@@ -1252,24 +1120,22 @@ class Graph:
 
                 # more than 1 allowed dir -> split otherwise do step
                 if len(allowed_dir) > 1:
-                    if not self.adj.get(cur_node):
-                        self.adj[cur_node] = []
-                    if Graph.Adjacency(cur_pos, weight, against_grain) not in self.adj[cur_node]:
-                        self.adj[cur_node].append(Graph.Adjacency(cur_pos, weight, against_grain))
-                    for ad in allowed_dir:
-                        if ad not in q:
-                            c_pos, c_dir = ad
-                            next_pos = (c_pos[0] + c_dir[0], c_pos[1] + c_dir[1])
-                            _against_grain = slopes.index(grid[next_pos]) == (directions.index(c_dir) + 2) % 4
-                            q.append((c_pos, c_dir, _against_grain))
+                    self.add_edge(cur_node, cur_pos, weight, against_grain)
+                    for ndf in allowed_dir:
+                        if ndf not in q:
+                            next_pos = self.step(*ndf)
+                            _against_grain = list(directions.keys()).index(grid[next_pos]) == (
+                                    list(directions.values()).index(ndf[1]) + 2) % 4
+
+                            q.append((*ndf, _against_grain))
                     break
                 # 1 allowed dir
                 cur_pos, cur_dir = allowed_dir[0]
                 weight += 1
-                cur_pos = (cur_pos[0] + cur_dir[0], cur_pos[1] + cur_dir[1])
+                cur_pos = self.step(cur_pos, cur_dir)
 
     def longest_path(self):
-        # find longest path from start to end in directed graph
+        # find the longest path from start to end in directed graph
 
         dist = {self.start: 0}
         q = [self.start]
@@ -1310,41 +1176,39 @@ def aoc23():
     print("part 2:", g.longest_path_undirected(set(g.adj.keys()), g.start))
 
 
+def d24_lines_future_inter(l1: tuple, l2: tuple, test_area: tuple) -> bool:
+    c1, v1 = l1
+    c2, v2 = l2
+
+    x, _, rank, _ = np.linalg.lstsq(np.array([v1, -v2]).T, c2 - c1, rcond=None)
+    if rank != 2 or any(x < 0):
+        return False
+
+    # check if in future both ways
+    inter = c1 + v1 * x[0]
+    x, _, _, _ = np.linalg.lstsq(np.array([v2, -v1]).T, c1 - c2, rcond=None)
+    if not all(test_area[0] <= val <= test_area[1] for val in inter) or any(x < 0):
+        return False
+    return True
+
+
 def aoc24():
-    acc_p1, lines, test_area = 0, [], (int(2e14), int(4e14))
-    for line in scrape():
-        p, v = (list(map(int, part.split(','))) for part in line.split('@'))
-        lines.append((np.array(p[:2]).T, np.array(v[:2]).T))
-
-    for i in range(len(lines)):
-        for j in range(i + 1, len(lines)):
-            c1, v1 = lines[i]
-            c2, v2 = lines[j]
-
-            x, _, rank, _ = np.linalg.lstsq(np.array([v1, -v2]).T, c2 - c1, rcond=None)
-            if rank != 2 or any(x < 0):
-                continue
-
-            # check if in future both ways
-            inter = c1 + v1 * x[0]
-            x, _, _, _ = np.linalg.lstsq(np.array([v2, -v1]).T, c1 - c2, rcond=None)
-            if not all(test_area[0] <= val <= test_area[1] for val in inter) or any(x < 0):
-                continue
-
-            acc_p1 += 1
-    print("part 1:", acc_p1)
+    acc_p1, lines = 0, []
 
     z3_solver = z3.Solver()
     rock = z3.RealVector('rock', 6)
     t = z3.RealVector('t', 3)
 
-    num = 0
-    for line in scrape():
-        if num == 3:  # 3 are enough
-            break
+    for i, line in enumerate(scrape()):
         p, v = (list(map(int, part.split(','))) for part in line.split('@'))
-        z3_solver.add([(rock[dim] + rock[dim + 3] * t[num] == p[dim] + v[dim] * t[num]) for dim in range(3)])
-        num += 1
+        lines.append((np.array(p[:2]).T, np.array(v[:2]).T))
+        if i < 3:  # 3 are enough
+            z3_solver.add([(rock[dim] + rock[dim + 3] * t[i] == p[dim] + v[dim] * t[i]) for dim in range(3)])
+
+    for i in range(len(lines)):
+        for j in range(i + 1, len(lines)):
+            acc_p1 += d24_lines_future_inter(lines[i], lines[j], (int(2e14), int(4e14)))
+    print("part 1:", acc_p1)
 
     z3_solver.check()
     print("part 2:", z3_solver.model().eval(sum(rock[:3])))
@@ -1356,9 +1220,6 @@ def aoc25():
         vals = vals.split()
         for v in vals:
             g.add_edge(k, v, capacity=1)
-    # import matplotlib.pyplot as plt
-    # nx.draw(g, with_labels=True)
-    # plt.savefig('graph.svg')
     cut_val, partition = 0, (set(), set())
     while cut_val != 3:
         s, e = sample(list(g.nodes()), 2)
