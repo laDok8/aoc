@@ -1,3 +1,5 @@
 **/.env
 **/inp*.txt
 **/.idea
+**/.venv
+**/__pycache__
