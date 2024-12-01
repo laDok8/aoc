@@ -2,7 +2,6 @@ from utils import scrape
 
 import numpy as np
 
-
 def aoc1():
     inp = scrape()
     left_col, right_col = zip(*[(int(left), int(r)) for left, r in (line.split() for line in inp)])

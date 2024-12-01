@@ -2,11 +2,10 @@
 import datetime
 
 
-from utils import scrape
-from solutions import *
+import solutions as s
 
 if __name__ == '__main__':
     # start aoc for given calendar day
     today = datetime.date.today().day
-    aocs = [aoc1]
+    aocs = [s.aoc1]
     aocs[today - 1]()

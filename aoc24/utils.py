@@ -32,9 +32,10 @@ def scrape(year: int = 0, day: int = 0, separator: str = '\n'):
     url = f'https://adventofcode.com/{year}/day/{day}/input'
     file = f'inp{day}.txt'
     if os.path.exists(file):
-        lines = open(file, encoding='utf-8').read().split(separator)
-        if lines and lines[-1] == '':
-            lines.pop()
+        with open(file, encoding='utf-8') as f:
+            lines = f.read().split(separator)
+            if lines and lines[-1] == '':
+                lines.pop()
         return lines
     inp = r.get(url, cookies=cookies, timeout=1).text.rstrip()
     with open(file, 'w', encoding='UTF-8') as f:
