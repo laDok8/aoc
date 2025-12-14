@@ -1,5 +1,7 @@
+use onig::Regex;
+
 fn part1() {
-    let input = include_str!("input.txt");
+    let input = include_str!("../inputs/day2.txt");
     let mut invalid_sum = 0;
     for line in input.split(",") {
         let line = line.trim();
@@ -19,10 +21,11 @@ fn part1() {
             }
         }
     }
-    print!("Part 1: {invalid_sum}");
+    println!("Part 1: {invalid_sum}");
 }
+
 fn part2() {
-    let input = include_str!("input.txt");
+    let input = include_str!("../inputs/day2.txt");
     let mut invalid_sum = 0;
     for line in input.split(",") {
         let line = line.trim();
@@ -35,25 +38,17 @@ fn part2() {
 
         for num in start..=end {
             let num_str = num.to_string();
-            //lets try all possible splits <1-N/2> can be N times
-            for split_len in 1..=(num_str.len() / 2){
-                let (f,_) = num_str.split_at(split_len);
-                // should get exactly N/split_len matches
-                let matches: Vec<&str> = num_str.matches(f).collect();
-                if matches.len() == num_str.len()/split_len && (num_str.len()%split_len)==0 {
-                    invalid_sum += num;
-                    break;
-                }
-
+            // let's match via onig (supports backrefs)
+            let re = Regex::new(r"^(.+?)\1+$").unwrap();
+            if re.is_match(&num_str) {
+                invalid_sum += num;
             }
         }
     }
-    print!("Part 2: {invalid_sum}");
+    println!("Part 2: {invalid_sum}");
 }
 
-
-
-fn main() {
+pub fn day2() {
     part1();
     part2();
 }

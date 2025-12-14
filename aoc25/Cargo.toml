@@ -2,5 +2,8 @@
 name = "aoc25"
 version = "0.1.0"
 edition = "2024"
+default-run = "aoc25"
 
 [dependencies]
+onig = "6.5.1"
+regex = "1.12.2"
