@@ -15,7 +15,7 @@ fn part1() {
         for num in start..=end {
             let num_str = num.to_string();
             let str_len = num_str.len() / 2;
-            let (f,e) = num_str.split_at(str_len);
+            let (f, e) = num_str.split_at(str_len);
             if f == e {
                 invalid_sum += num;
             }
