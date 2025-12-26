@@ -98,7 +98,7 @@ fn part1(graph: &mut Graph, max_edges: usize) {
     let mut sizes: Vec<usize> = circuit_sizes.values().cloned().collect();
     sizes.sort_by(|a, b| b.cmp(a));
 
-    let result = sizes.iter().take(3).product::<usize>();
+    let result: usize = sizes.iter().take(3).product();
     println!("Part 1: {result}");
 }
 
@@ -117,7 +117,7 @@ fn part2(graph: &mut Graph) {
             break;
         }
     }
-    println!("Part 2: {res} ");
+    println!("Part 2: {res}");
 }
 
 pub fn day8() {

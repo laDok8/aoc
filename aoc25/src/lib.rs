@@ -7,6 +7,10 @@ pub mod days {
     pub mod day6;
     pub mod day7;
     pub mod day8;
+    pub mod day9;
+    pub mod day10;
+    pub mod day11;
+    pub mod day12;
 }
 
 pub use days::day1::day1;
@@ -17,3 +21,7 @@ pub use days::day5::day5;
 pub use days::day6::day6;
 pub use days::day7::day7;
 pub use days::day8::day8;
+pub use days::day9::day9;
+pub use days::day10::day10;
+pub use days::day11::day11;
+pub use days::day12::day12;

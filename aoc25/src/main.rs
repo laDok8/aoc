@@ -1,5 +1,5 @@
 fn main() {
-    let day = std::env::args().nth(1).unwrap_or_else(|| "8".into());
+    let day = std::env::args().nth(1).unwrap_or_else(|| "9".into());
     match day.as_str() {
         "1" | "day1" => aoc25::day1(),
         "2" | "day2" => aoc25::day2(),
@@ -9,6 +9,10 @@ fn main() {
         "6" | "day6" => aoc25::day6(),
         "7" | "day7" => aoc25::day7(),
         "8" | "day8" => aoc25::day8(),
+        "9" | "day9" => aoc25::day9(),
+        "10" | "day10" => aoc25::day10(),
+        "11" | "day11" => aoc25::day11(),
+        "12" | "day12" => aoc25::day12(),
         _ => eprintln!("unknown day"),
     }
 }
