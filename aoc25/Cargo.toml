@@ -6,4 +6,6 @@ default-run = "aoc25"
 
 [dependencies]
 onig = "6.5.1"
+rayon = "1.10"
 regex = "1.12.2"
+z3 = "0.19.7"
